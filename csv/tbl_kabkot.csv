@@ -1,515 +1,515 @@
-"id","provinsi_id","kabupaten_kota","ibukota","k_bsni"
-"1","1","Kabupaten Aceh Barat","Meulaboh","MBO"
-"2","1","Kabupaten Aceh Barat Daya","Blangpidie","BPD"
-"3","1","Kabupaten Aceh Besar","Jantho","JTH"
-"4","1","Kabupaten Aceh Jaya","Calang","CAG"
-"5","1","Kabupaten Aceh Selatan","Tapak Tuan","TTN"
-"6","1","Kabupaten Aceh Singkil","Singkil","SKL"
-"7","1","Kabupaten Aceh Tamiang","Karang Baru","KRB"
-"8","1","Kabupaten Aceh Tengah","Takengon","TKN"
-"9","1","Kabupaten Aceh Tenggara","Kutacane","KTN"
-"10","1","Kabupaten Aceh Timur","Langsa","LGS"
-"11","1","Kabupaten Aceh Utara","Lhoksukon","LSK"
-"12","1","Kabupaten Bener Meriah","Simpang Tiga Redelong","STR"
-"13","1","Kabupaten Bireuen","Bireuen","BIR"
-"14","1","Kabupaten Gayo Lues","Blangkejeren","BKJ"
-"15","1","Kabupaten Nagan Raya","Suka Makmue","SKM"
-"16","1","Kabupaten Pidie","Sigli","SGI"
-"17","1","Kabupaten Pidie Jaya","Meureundu","MRN"
-"18","1","Kabupaten Simeulue","Sinabang","SNB"
-"19","1","Kota Banda Aceh","Banda Aceh","BNA"
-"20","1","Kota Langsa","Langsa","LGS"
-"21","1","Kota Lhokseumawe","Lhokseumawe","LSM"
-"22","1","Kota Sabang","Sabang","SAB"
-"23","1","Kota Subulussalam","Subulussalam","SUS"
-"24","2","Kabupaten Badung","Mengwi","MGW"
-"25","2","Kabupaten Bangli","Bangli","BLI"
-"26","2","Kabupaten Buleleng","Singaraja","SGR"
-"27","2","Kabupaten Gianyar","Gianyar","GIN"
-"28","2","Kabupaten Jembrana","Negara","NGA"
-"29","2","Kabupaten Karangasem","Karangasem","KRA"
-"30","2","Kabupaten Klungkung","Semarapura","SRP"
-"31","2","Kabupaten Tabanan","Tabanan","TAB"
-"32","2","Kota Denpasar","Denpasar","DPR"
-"33","3","Kabupaten Bangka","Sungai Liat","SGL"
-"34","3","Kabupaten Bangka Barat","Mentok","MTK"
-"35","3","Kabupaten Bangka Selatan","Toboali","TBL"
-"36","3","Kabupaten Bangka Tengah","Koba","KBA"
-"37","3","Kabupaten Belitung","Tanjung Pandan","TDN"
-"38","3","Kabupaten Belitung Timur","Manggar","MGR"
-"39","3","Kota Pangkal Pinang","Pangkal Pinang","PGP"
-"40","4","Kabupaten Lebak","Rangkas Bitung","RKB"
-"41","4","Kabupaten Pandeglang","Pandeglang","PDG"
-"42","4","Kabupaten Serang","Serang","SRG"
-"43","4","Kabupaten Tangerang","Tigaraksa","TGR"
-"44","4","Kota Cilegon","Cilegon","CLG"
-"45","4","Kota Serang","Serang","SRG"
-"46","4","Kota Tangerang","Tangerang","TNG"
-"47","4","Kota Tangerang Selatan","Ciputat","CPT"
-"48","5","Kabupaten Bengkulu Selatan","Manna","MNA"
-"49","5","Kabupaten Bengkulu Tengah","Karang Tinggi","KRT"
-"50","5","Kabupaten Bengkulu Utara","Arga Makmur","AGM"
-"51","5","Kabupaten Kaur","Bintuhan","BHN"
-"52","5","Kabupaten Kepahiang","Kepahiang","KPH"
-"53","5","Kabupaten Lebong","Tubei","TUB"
-"54","5","Kabupaten Muko Muko","Mukomuko","MKM"
-"55","5","Kabupaten Rejang Lebong","Curup","CRP"
-"56","5","Kabupaten Seluma","Tais","TAS"
-"57","5","Kota Bengkulu","Bengkulu","BGL"
-"58","6","Kabupaten Bantul","Bantul","BTL"
-"59","6","Kabupaten Gunung Kidul","Wonosari","WNO"
-"60","6","Kabupaten Kulon Progo","Wates","WAT"
-"61","6","Kabupaten Sleman","Sleman","SMN"
-"62","6","Kota Yogyakarta","Yogyakarta","YYK"
-"63","7","Kabupaten Adm. Kepulauan Seribu","Kepulauan Seribu Utara","KSU"
-"64","7","Kota Adm. Jakarta Barat","Grogol Petamburan","GGP"
-"65","7","Kota Adm. Jakarta Pusat","Tanah Abang","TNA"
-"66","7","Kota Adm. Jakarta Selatan","Kebayoran Baru","KYB"
-"67","7","Kota Adm. Jakarta Timur","Cakung","CKG"
-"68","7","Kota Adm. Jakarta Utara","Tanjung Priok","TJP"
-"69","8","Kabupaten Boalemo","Tilamuta","TMT"
-"70","8","Kabupaten Bone Bolango","Suwawa","SWW"
-"71","8","Kabupaten Gorontalo","Limboto","LBT"
-"72","8","Kabupaten Gorontalo Utara","Kwandang","KWD"
-"73","8","Kabupaten Pohuwato","Marisa","MAR"
-"74","8","Kota Gorontalo","Gorontalo","GTO"
-"75","9","Kabupaten Batanghari","Muara Bulian","MBN"
-"76","9","Kabupaten Bungo","Muara Bungo","MRB"
-"77","9","Kabupaten Kerinci","Sungai Penuh","SPN"
-"78","9","Kabupaten Merangin","Bangko","BKO"
-"79","9","Kabupaten Muaro Jambi","Sengeti","SNT"
-"80","9","Kabupaten Sarolangun","Sarolangun","SRL"
-"81","9","Kabupaten Tanjung Jabung Barat","Kuala Tungkal","KLT"
-"82","9","Kabupaten Tanjung Jabung Timur","Muara Sabak","MSK"
-"83","9","Kabupaten Tebo","Muara Tebo","MRT"
-"84","9","Kota Jambi","Jambi","JMB"
-"85","9","Kota Sungai Penuh","Sungai Penuh","SPN"
-"86","10","Kabupaten Bandung","Soreang","SOR"
-"87","10","Kabupaten Bandung Barat","Ngamprah","NPH"
-"88","10","Kabupaten Bekasi","Cikarang","CKR"
-"89","10","Kabupaten Bogor","Cibinong","CBI"
-"90","10","Kabupaten Ciamis","Ciamis","CMS"
-"91","10","Kabupaten Cianjur","Cianjur","CJR"
-"92","10","Kabupaten Cirebon","Sumber","SBR"
-"93","10","Kabupaten Garut","Garut","GRT"
-"94","10","Kabupaten Indramayu","Indramayu","IDM"
-"95","10","Kabupaten Karawang","Karawang","KWG"
-"96","10","Kabupaten Kuningan","Kuningan","KNG"
-"97","10","Kabupaten Majalengka","Majalengka","MJL"
-"98","10","Kabupaten Pangandaran","Parigi","PAG"
-"99","10","Kabupaten Purwakarta","Purwakarta","PWK"
-"100","10","Kabupaten Subang","Subang","SNG"
-"101","10","Kabupaten Sukabumi","Sukabumi","SBM"
-"102","10","Kabupaten Sumedang","Sumedang","SMD"
-"103","10","Kabupaten Tasikmalaya","Singaparna","SPA"
-"104","10","Kota Bandung","Bandung","BDG"
-"105","10","Kota Banjar","Banjar","BJR"
-"106","10","Kota Bekasi","Bekasi","BKS"
-"107","10","Kota Bogor","Bogor","BGR"
-"108","10","Kota Cimahi","Cimahi","CMH"
-"109","10","Kota Cirebon","Cirebon","CBN"
-"110","10","Kota Depok","Depok","DPK"
-"111","10","Kota Sukabumi","Sukabumi","SKB"
-"112","10","Kota Tasikmalaya","Tasikmalaya","TSM"
-"113","11","Kabupaten Banjarnegara","Banjarnegara","BNR"
-"114","11","Kabupaten Banyumas","Purwokerto","PWT"
-"115","11","Kabupaten Batang","Batang","BTG"
-"116","11","Kabupaten Blora","Blora","BLA"
-"117","11","Kabupaten Boyolali","Boyolali","BYL"
-"118","11","Kabupaten Brebes","Brebes","BBS"
-"119","11","Kabupaten Cilacap","Cilacap","CLP"
-"120","11","Kabupaten Demak","Demak","DMK"
-"121","11","Kabupaten Grobogan","Purwodadi","PWD"
-"122","11","Kabupaten Jepara","Jepara","JPA"
-"123","11","Kabupaten Karanganyar","Karanganyar","KRG"
-"124","11","Kabupaten Kebumen","Kebumen","KBM"
-"125","11","Kabupaten Kendal","Kendal","KDL"
-"126","11","Kabupaten Klaten","Klaten","KLN"
-"127","11","Kabupaten Kudus","Kudus","KDS"
-"128","11","Kabupaten Magelang","Mungkid","MKD"
-"129","11","Kabupaten Pati","Pati","PTI"
-"130","11","Kabupaten Pekalongan","Kajen","KJN"
-"131","11","Kabupaten Pemalang","Pemalang","PML"
-"132","11","Kabupaten Purbalingga","Purbalingga","PBG"
-"133","11","Kabupaten Purworejo","Purworejo","PWR"
-"134","11","Kabupaten Rembang","Rembang","RBG"
-"135","11","Kabupaten Semarang","Ungaran","UNR"
-"136","11","Kabupaten Sragen","Sragen","SGN"
-"137","11","Kabupaten Sukoharjo","Sukoharjo","SKH"
-"138","11","Kabupaten Tegal","Slawi","SLW"
-"139","11","Kabupaten Temanggung","Temanggung","TMG"
-"140","11","Kabupaten Wonogiri","Wonogiri","WNG"
-"141","11","Kabupaten Wonosobo","Wonosobo","WSB"
-"142","11","Kota Magelang","Magelang","MGG"
-"143","11","Kota Pekalongan","Pekalongan","PKL"
-"144","11","Kota Salatiga","Salatiga","SLT"
-"145","11","Kota Semarang","Semarang","SMG"
-"146","11","Kota Surakarta (Solo)","Surakarta","SKT"
-"147","11","Kota Tegal","Tegal","TGL"
-"148","12","Kabupaten Bangkalan","Bangkalan","BKL"
-"149","12","Kabupaten Banyuwangi","Banyuwangi","BYW"
-"150","12","Kabupaten Blitar","Kanigoro","KNR"
-"151","12","Kabupaten Bojonegoro","Bojonegoro","BJN"
-"152","12","Kabupaten Bondowoso","Bondowoso","BDW"
-"153","12","Kabupaten Gresik","Gresik","GSK"
-"154","12","Kabupaten Jember","Jember","JMR"
-"155","12","Kabupaten Jombang","Jombang","JBG"
-"156","12","Kabupaten Kediri","Kediri","KDR"
-"157","12","Kabupaten Lamongan","Lamongan","LMG"
-"158","12","Kabupaten Lumajang","Lumajang","LMJ"
-"159","12","Kabupaten Madiun","Mejayan","MJY"
-"160","12","Kabupaten Magetan","Magetan","MGT"
-"161","12","Kabupaten Malang","Kepanjen","KPN"
-"162","12","Kabupaten Mojokerto","Mojokerto","MJK"
-"163","12","Kabupaten Nganjuk","Nganjuk","NJK"
-"164","12","Kabupaten Ngawi","Ngawi","NGW"
-"165","12","Kabupaten Pacitan","Pacitan","PCT"
-"166","12","Kabupaten Pamekasan","Pamekasan","PMK"
-"167","12","Kabupaten Pasuruan","Pasuruan","PSR"
-"168","12","Kabupaten Ponorogo","Ponorogo","PNG"
-"169","12","Kabupaten Probolinggo","Kraksaan","KRS"
-"170","12","Kabupaten Sampang","Sampang","SPG"
-"171","12","Kabupaten Sidoarjo","Sidoarjo","SDA"
-"172","12","Kabupaten Situbondo","Situbondo","SIT"
-"173","12","Kabupaten Sumenep","Sumenep","SMP"
-"174","12","Kabupaten Trenggalek","Trenggalek","TRK"
-"175","12","Kabupaten Tuban","Tuban","TBN"
-"176","12","Kabupaten Tulungagung","Tulungagung","TLG"
-"177","12","Kota Batu","Batu","BTU"
-"178","12","Kota Blitar","Blitar","BLT"
-"179","12","Kota Kediri","Kediri","KDR"
-"180","12","Kota Madiun","Madiun","MAD"
-"181","12","Kota Malang","Malang","MLG"
-"182","12","Kota Mojokerto","Mojokerto","MJK"
-"183","12","Kota Pasuruan","Pasuruan","PSN"
-"184","12","Kota Probolinggo","Probolinggo","PBL"
-"185","12","Kota Surabaya","Surabaya","SBY"
-"186","13","Kabupaten Bengkayang","Bengkayang","BEK"
-"187","13","Kabupaten Kapuas Hulu","Putussibau","PTS"
-"188","13","Kabupaten Kayong Utara","Sukadane","SKD"
-"189","13","Kabupaten Ketapang","Ketapang","KTP"
-"190","13","Kabupaten Kubu Raya","Sungai Raya","SRY"
-"191","13","Kabupaten Landak","Ngabang","NBA"
-"192","13","Kabupaten Melawi","Nanga Pinoh","NGP"
-"193","13","Kabupaten Mempawah","Mempawah","MPW"
-"194","13","Kabupaten Sambas","Sambas","SBS"
-"195","13","Kabupaten Sanggau","Sanggau","SAG"
-"196","13","Kabupaten Sekadau","Sekadau","SED"
-"197","13","Kabupaten Sintang","Sintang","STG"
-"198","13","Kota Pontianak","Pontianak","PTK"
-"199","13","Kota Singkawang","Singkawang","SKW"
-"200","14","Kabupaten Balangan","Paringin","PRN"
-"201","14","Kabupaten Banjar","Martapura","MTP"
-"202","14","Kabupaten Barito Kuala","Marabahan","MRH"
-"203","14","Kabupaten Hulu Sungai Selatan","Kandangan","KGN"
-"204","14","Kabupaten Hulu Sungai Tengah","Barabai","BRB"
-"205","14","Kabupaten Hulu Sungai Utara","Amuntai","AMT"
-"206","14","Kabupaten Kotabaru","Kotabaru","KBR"
-"207","14","Kabupaten Tabalong","Tanjung","TJG"
-"208","14","Kabupaten Tanah Bumbu","Batulicin","BLN"
-"209","14","Kabupaten Tanah Laut","Pelaihari","PLI"
-"210","14","Kabupaten Tapin","Rantau","RTA"
-"211","14","Kota Banjarbaru","Banjarbaru","BJB"
-"212","14","Kota Banjarmasin","Banjarmasin","BJM"
-"213","15","Kabupaten Barito Selatan","Buntok","BNT"
-"214","15","Kabupaten Barito Timur","Tamiang Layang","TML"
-"215","15","Kabupaten Barito Utara","Muara Teweh","MTW"
-"216","15","Kabupaten Gunung Mas","Kuala Kurun","KKN"
-"217","15","Kabupaten Kapuas","Kuala Kapuas","KLK"
-"218","15","Kabupaten Katingan","Kasongan","KSN"
-"219","15","Kabupaten Kotawaringin Barat","Pangkalan Bun","PBU"
-"220","15","Kabupaten Kotawaringin Timur","Sampit","SPT"
-"221","15","Kabupaten Lamandau","Nanga Bulik","NGB"
-"222","15","Kabupaten Murung Raya","Puruk Cahu","PRC"
-"223","15","Kabupaten Pulang Pisau","Pulang Pisau","PPS"
-"224","15","Kabupaten Seruyan","Kuala Pembuang","KLP"
-"225","15","Kabupaten Sukamara","Sukamara","SKR"
-"226","15","Kota Palangka Raya","Palangkaraya","PLK"
-"227","16","Kabupaten Berau","Tanjung Redeb","TNR"
-"228","16","Kabupaten Kutai Barat","Sendawar","SDW"
-"229","16","Kabupaten Kutai Kartanegara","Tenggarong","TRG"
-"230","16","Kabupaten Kutai Timur","Sanggatta","SGT"
-"231","16","Kabupaten Mahakam Ulu","Ujoh Bilang","UJB"
-"232","16","Kabupaten Paser","Tanah Grogot","TGT"
-"233","16","Kabupaten Penajam Paser Utara","Penajam","PNJ"
-"234","16","Kota Balikpapan","Balikpapan","BPP"
-"235","16","Kota Bontang","Bontang","BON"
-"236","16","Kota Samarinda","Samarinda","SMR"
-"237","17","Kabupaten Bulungan (Bulongan)","Tanjung Selor","TJS"
-"238","17","Kabupaten Malinau","Malinau","MLN"
-"239","17","Kabupaten Nunukan","Nunukan","NNK"
-"240","17","Kabupaten Tana Tidung","Tideng Pale","TDP"
-"241","17","Kota Tarakan","Tarakan","TAR"
-"242","18","Kabupaten Bintan","Bandar Seri Bentan","BSB"
-"243","18","Kabupaten Karimun","Tanjung Balai Karimun","TBK"
-"244","18","Kabupaten Kepulauan Anambas","Tarempa","TRP"
-"245","18","Kabupaten Lingga","Daik Lingga","DKL"
-"246","18","Kabupaten Natuna","Ranai","RAN"
-"247","18","Kota Batam","Batam","BTM"
-"248","18","Kota Tanjung Pinang","Tanjung Pinang","TPG"
-"249","19","Kabupaten Lampung Barat","Liwa","LIW"
-"250","19","Kabupaten Lampung Selatan","Kalianda","KLA"
-"251","19","Kabupaten Lampung Tengah","Gunung Sugih","GNS"
-"252","19","Kabupaten Lampung Timur","Sukadana","SDN"
-"253","19","Kabupaten Lampung Utara","Kotabumi","KTB"
-"254","19","Kabupaten Mesuji","Mesuji","MSJ"
-"255","19","Kabupaten Pesawaran","Gedong Tataan","GDT"
-"256","19","Kabupaten Pesisir Barat","Krui","KRU"
-"257","19","Kabupaten Pringsewu","Pringsewu","PRW"
-"258","19","Kabupaten Tanggamus","Kota Agung","KOT"
-"259","19","Kabupaten Tulang Bawang","Menggala","MGL"
-"260","19","Kabupaten Tulang Bawang Barat","Tulang Bawang Tengah","TWG"
-"261","19","Kabupaten Way Kanan","Blambangan Umpu","BBU"
-"262","19","Kota Bandar Lampung","Bandar Lampung","BDL"
-"263","19","Kota Metro","Metro","MET"
-"264","20","Kabupaten Buru","Namlea","NLA"
-"265","20","Kabupaten Buru Selatan","Namrole","NMR"
-"266","20","Kabupaten Kepulauan Aru","Dobo","DOB"
-"267","20","Kabupaten Maluku Barat Daya","Tiakur","TKR"
-"268","20","Kabupaten Maluku Tengah","Masohi","MSH"
-"269","20","Kabupaten Maluku Tenggara","Tual","TUL"
-"270","20","Kabupaten Maluku Tenggara Barat","Saumlaki","SML"
-"271","20","Kabupaten Seram Bagian Barat","Dataran Hunipopu","DRH"
-"272","20","Kabupaten Seram Bagian Timur","Dataran Hunimoa","DTH"
-"273","20","Kota Ambon","Ambon","AMB"
-"274","20","Kota Tual","Tual","TUL"
-"275","21","Kabupaten Halmahera Barat","Jailolo","JLL"
-"276","21","Kabupaten Halmahera Selatan","Labuha","LBA"
-"277","21","Kabupaten Halmahera Tengah","Weda","WED"
-"278","21","Kabupaten Halmahera Timur","Maba","MAB"
-"279","21","Kabupaten Halmahera Utara","Tobelo","TOB"
-"280","21","Kabupaten Kepulauan Sula","Sanana","SNN"
-"281","21","Kabupaten Pulau Morotai","Daruba","DRB"
-"282","21","Kabupaten Pulau Taliabu","Bobong","BOB"
-"283","21","Kota Ternate","Ternate","TTE"
-"284","21","Kota Tidore Kepulauan","Tidore","TDR"
-"285","22","Kabupaten Bima","Woha","WHO"
-"286","22","Kabupaten Dompu","Dompu","DPU"
-"287","22","Kabupaten Lombok Barat","Gerung","GRG"
-"288","22","Kabupaten Lombok Tengah","Praya","PYA"
-"289","22","Kabupaten Lombok Timur","Selong","SEL"
-"290","22","Kabupaten Lombok Utara","Tanjung","TJN"
-"291","22","Kabupaten Sumbawa","Sumbawa Besar","SBW"
-"292","22","Kabupaten Sumbawa Barat","Taliwang","TLW"
-"293","22","Kota Bima","Bima","BIM"
-"294","22","Kota Mataram","Mataram","MTR"
-"295","23","Kabupaten Alor","Kalabahi","KLB"
-"296","23","Kabupaten Belu","Atambua","ATB"
-"297","23","Kabupaten Ende","Ende","END"
-"298","23","Kabupaten Flores Timur","Larantuka","LRT"
-"299","23","Kabupaten Kupang","Kupang","KPG"
-"300","23","Kabupaten Lembata","Lewoleba","LWB"
-"301","23","Kabupaten Malaka","Betun","BTN"
-"302","23","Kabupaten Manggarai","Ruteng","RTG"
-"303","23","Kabupaten Manggarai Barat","Labuan Bajo","LBJ"
-"304","23","Kabupaten Manggarai Timur","Borong","BRG"
-"305","23","Kabupaten Nagekeo","Mbay","MBY"
-"306","23","Kabupaten Ngada","Bajawa","BJW"
-"307","23","Kabupaten Rote Ndao","Baa","BAA"
-"308","23","Kabupaten Sabu Raijua","Sabu Barat","SBB"
-"309","23","Kabupaten Sikka","Maumere","MME"
-"310","23","Kabupaten Sumba Barat","Waikabubak","WKB"
-"311","23","Kabupaten Sumba Barat Daya","Tambolaka","TAM"
-"312","23","Kabupaten Sumba Tengah","Waibakul","WBL"
-"313","23","Kabupaten Sumba Timur","Waingapu","WGP"
-"314","23","Kabupaten Timor Tengah Selatan","Soe","SOE"
-"315","23","Kabupaten Timor Tengah Utara","Kefamenanu","KFM"
-"316","23","Kota Kupang","Kupang","KPG"
-"317","24","Kabupaten Asmat","Agats","AGT"
-"318","24","Kabupaten Biak Numfor","Biak","BIK"
-"319","24","Kabupaten Boven Digoel","Tanah Merah","TMR"
-"320","24","Kabupaten Deiyai (Deliyai)","Tigi","TIG"
-"321","24","Kabupaten Dogiyai","Kigamani","KGM"
-"322","24","Kabupaten Intan Jaya","Sugapa","SGP"
-"323","24","Kabupaten Jayapura","Jayapura","JAP"
-"324","24","Kabupaten Jayawijaya","Wamena","WAM"
-"325","24","Kabupaten Keerom","Waris","WRS"
-"326","24","Kabupaten Kepulauan Yapen (Yapen Waropen)","Serui","SRU"
-"327","24","Kabupaten Lanny Jaya","Tiom","TOM"
-"328","24","Kabupaten Mamberamo Raya","Burmeso","BRM"
-"329","24","Kabupaten Mamberamo Tengah","Kobakma","KBK"
-"330","24","Kabupaten Mappi","Kepi","KEP"
-"331","24","Kabupaten Merauke","Merauke","MRK"
-"332","24","Kabupaten Mimika","Timika","TIM"
-"333","24","Kabupaten Nabire","Nabire","NAB"
-"334","24","Kabupaten Nduga","Kenyam","KYM"
-"335","24","Kabupaten Paniai","Enarotali","ERT"
-"336","24","Kabupaten Pegunungan Bintang","Oksibil","OSB"
-"337","24","Kabupaten Puncak","Ilaga","ILG"
-"338","24","Kabupaten Puncak Jaya","Mulia","MUL"
-"339","24","Kabupaten Sarmi","Sarmi","SMI"
-"340","24","Kabupaten Supiori","Sorendiweri","SRW"
-"341","24","Kabupaten Tolikara","Karubaga","KBG"
-"342","24","Kabupaten Waropen","Botawa","BTW"
-"343","24","Kabupaten Yahukimo","Sumohai","SMH"
-"344","24","Kabupaten Yalimo","Elelim","ELL"
-"345","24","Kota Jayapura","Jayapura","JAP"
-"346","25","Kabupaten Fakfak","Fak Fak","FFK"
-"347","25","Kabupaten Kaimana","Kaimana","KMN"
-"348","25","Kabupaten Manokwari","Manokwari","MNK"
-"349","25","Kabupaten Manokwari Selatan","Ransiki","RNK"
-"350","25","Kabupaten Maybrat","Aifat","AFT"
-"351","25","Kabupaten Pegunungan Arfak","Anggi","ANG"
-"352","25","Kabupaten Raja Ampat","Waisai","WAS"
-"353","25","Kabupaten Sorong","Aimas","AMS"
-"354","25","Kabupaten Sorong Selatan","Teminabuan","TMB"
-"355","25","Kabupaten Tambrauw","Fef","FEF"
-"356","25","Kabupaten Teluk Bintuni","Bintuni","BTI"
-"357","25","Kabupaten Teluk Wondama","Rasiei","RAS"
-"358","25","Kota Sorong","Sorong","SON"
-"359","26","Kabupaten Bengkalis","Bengkalis","BLS"
-"360","26","Kabupaten Indragiri Hilir","Tembilahan","TBH"
-"361","26","Kabupaten Indragiri Hulu","Rengat","RGT"
-"362","26","Kabupaten Kampar","Bangkinang","BKN"
-"363","26","Kabupaten Kepulauan Meranti","Tebing Tinggi","TTG"
-"364","26","Kabupaten Kuantan Singingi","Teluk Kuantan","TLK"
-"365","26","Kabupaten Pelalawan","Pangkalan Kerinci","PKK"
-"366","26","Kabupaten Rokan Hilir","Ujung Tanjung","UJT"
-"367","26","Kabupaten Rokan Hulu","Pasir Pengarairan","PRP"
-"368","26","Kabupaten Siak","Siak Sriindrapura","SAK"
-"369","26","Kota Dumai","Dumai","DUM"
-"370","26","Kota Pekanbaru","Pekanbaru","PBR"
-"371","27","Kabupaten Majene","Majene","MJN"
-"372","27","Kabupaten Mamasa","Mamasa","MMS"
-"373","27","Kabupaten Mamuju","Mamuju","MAM"
-"374","27","Kabupaten Mamuju Tengah","Tobadak","TBD"
-"375","27","Kabupaten Mamuju Utara","Pasangkayu","PKY"
-"376","27","Kabupaten Polewali Mandar","Polewali","PLW"
-"377","28","Kabupaten Bantaeng","Bantaeng","BAN"
-"378","28","Kabupaten Barru","Barru","BAR"
-"379","28","Kabupaten Bone","Watampone","WTP"
-"380","28","Kabupaten Bulukumba","Bulukumba","BLK"
-"381","28","Kabupaten Enrekang","Enrekang","ENR"
-"382","28","Kabupaten Gowa","Sungguminasa","SGM"
-"383","28","Kabupaten Jeneponto","Jeneponto","JNP"
-"384","28","Kabupaten Selayar (Kepulauan Selayar)","Benteng","BEN"
-"385","28","Kabupaten Luwu","Palopo","PLP"
-"386","28","Kabupaten Luwu Timur","Malili","MLL"
-"387","28","Kabupaten Luwu Utara","Masamba","MSB"
-"388","28","Kabupaten Maros","Maros","MRS"
-"389","28","Kabupaten Pangkajene Kepulauan","Pangkajene","PKJ"
-"390","28","Kabupaten Pinrang","Pinrang","PIN"
-"391","28","Kabupaten Sidenreng Rappang (Sidrap)","Sidenreng","SDR"
-"392","28","Kabupaten Sinjai","Sinjai","SNJ"
-"393","28","Kabupaten Soppeng","Watan Soppeng","WNS"
-"394","28","Kabupaten Takalar","Takalar","TKA"
-"395","28","Kabupaten Tana Toraja","Makale","MAK"
-"396","28","Kabupaten Toraja Utara","Rantepao","RTP"
-"397","28","Kabupaten Wajo","Sengkang","SKG"
-"398","28","Kota Makassar","Makassar","MKS"
-"399","28","Kota Palopo","Palopo","PLP"
-"400","28","Kota Parepare","Pare Pare","PRE"
-"401","29","Kabupaten Banggai","Luwuk","LWK"
-"402","29","Kabupaten Banggai Kepulauan","Salakan","SKN"
-"403","29","Kabupaten Banggai Laut","Banggai","BGI"
-"404","29","Kabupaten Buol","Buol","BUL"
-"405","29","Kabupaten Donggala","Donggala","DGL"
-"406","29","Kabupaten Morowali","Bungku","BGK"
-"407","29","Kabupaten Morowali Utara","Kolonodale","KND"
-"408","29","Kabupaten Parigi Moutong","Parigi","PRG"
-"409","29","Kabupaten Poso","Poso","PSO"
-"410","29","Kabupaten Sigi","Sigi Biromaru","SGB"
-"411","29","Kabupaten Tojo Una-Una","Ampana","APN"
-"412","29","Kabupaten Toli-Toli","Toli Toli","TLI"
-"413","29","Kota Palu","Palu","PAL"
-"414","30","Kabupaten Bombana","Rumbia","RMB"
-"415","30","Kabupaten Buton","Pasar Wajo","PSW"
-"416","30","Kabupaten Buton Selatan","Batauga","BAG"
-"417","30","Kabupaten Buton Tengah","Labungkari","LBK"
-"418","30","Kabupaten Buton Utara","Buranga","BNG"
-"419","30","Kabupaten Kolaka","Kolaka","KKA"
-"420","30","Kabupaten Kolaka Timur","Tirawuta","TRW"
-"421","30","Kabupaten Kolaka Utara","Lasusua","LSS"
-"422","30","Kabupaten Konawe","Unaaha","UNH"
-"423","30","Kabupaten Konawe Kepulauan","Langara","LGR"
-"424","30","Kabupaten Konawe Selatan","Andoolo","ADL"
-"425","30","Kabupaten Konawe Utara","Wanggudu","WGD"
-"426","30","Kabupaten Muna","Raha","RAH"
-"427","30","Kabupaten Muna Barat","Sawerigadi","SWG"
-"428","30","Kabupaten Wakatobi","Wangi Wangi","WGW"
-"429","30","Kota Baubau","Bau-Bau","BAU"
-"430","30","Kota Kendari","Kendari","KDI"
-"431","31","Kabupaten Bolaang Mongondow","Lolak","LLK"
-"432","31","Kabupaten Bolaang Mongondow Selatan","Bolaang Uki","BLU"
-"433","31","Kabupaten Bolaang Mongondow Timur","Tutuyan","TTY"
-"434","31","Kabupaten Bolaang Mongondow Utara","Boroko","BRK"
-"435","31","Kabupaten Kepulauan Sangihe","Tahuna","THN"
-"436","31","Kabupaten Kepulauan Siau Tagulandang Biaro (Sitaro)","Ondong Siau","ODS"
-"437","31","Kabupaten Kepulauan Talaud","Melongguane","MGN"
-"438","31","Kabupaten Minahasa","Tondano","TNN"
-"439","31","Kabupaten Minahasa Selatan","Amurang","AMR"
-"440","31","Kabupaten Minahasa Tenggara","Ratahan","RTN"
-"441","31","Kabupaten Minahasa Utara","Air Madidi","ARM"
-"442","31","Kota Bitung","Bitung","BIT"
-"443","31","Kota Kotamobagu","Kotamobagu","KTG"
-"444","31","Kota Manado","Manado","MND"
-"445","31","Kota Tomohon","Tomohon","TMH"
-"446","32","Kabupaten Agam","Lubuk Basung","LBB"
-"447","32","Kabupaten Dharmasraya","Pulau Punjung","PLJ"
-"448","32","Kabupaten Kepulauan Mentawai","Tuapejat","TPT"
-"449","32","Kabupaten Lima Puluh Kota","Sarilamak","SRK"
-"450","32","Kabupaten Padang Pariaman","Nagari Parit Malintang","NPM"
-"451","32","Kabupaten Pasaman","Lubuk Sikaping","LBS"
-"452","32","Kabupaten Pasaman Barat","Simpang Empat","SPE"
-"453","32","Kabupaten Pesisir Selatan","Painan","PNN"
-"454","32","Kabupaten Sijunjung (Sawah Lunto Sijunjung)","Muaro Sijunjung","MRJ"
-"455","32","Kabupaten Solok","Arosuka","ARS"
-"456","32","Kabupaten Solok Selatan","Padang Aro","PDA"
-"457","32","Kabupaten Tanah Datar","Batusangkar","BSK"
-"458","32","Kota Bukittinggi","Bukittinggi","BKT"
-"459","32","Kota Padang","Padang","PAD"
-"460","32","Kota Padang Panjang","Padang Panjang","PDP"
-"461","32","Kota Pariaman","Pariaman","PMN"
-"462","32","Kota Payakumbuh","Payakumbuh","PYH"
-"463","32","Kota Sawahlunto","Sawahlunto","SWL"
-"464","32","Kota Solok","Solok","SLK"
-"465","33","Kabupaten Banyuasin","Pangkalan Balai","PKB"
-"466","33","Kabupaten Empat Lawang","Tebing Tinggi","TBG"
-"467","33","Kabupaten Lahat","Lahat","LHT"
-"468","33","Kabupaten Muara Enim","Muara Enim","MRE"
-"469","33","Kabupaten Musi Banyuasin","Sekayu","SKY"
-"470","33","Kabupaten Musi Rawas","Muarabeliti","MBL"
-"471","33","Kabupaten Musi Rawas Utara","Rupit","RPT"
-"472","33","Kabupaten Ogan Ilir","Indralaya","IDL"
-"473","33","Kabupaten Ogan Komering Ilir","Kayu Agung","KAG"
-"474","33","Kabupaten Ogan Komering Ulu","Baturaja","BTA"
-"475","33","Kabupaten Ogan Komering Ulu Selatan (Oku Selatan)","Muaradua","MRD"
-"476","33","Kabupaten Ogan Komering Ulu Timur (Oku Timur)","Martapura","MPR"
-"477","33","Kabupaten Penukal Abab Lematang Ilir","Talang Ubi","TLB"
-"478","33","Kota Lubuk Linggau","Lubuk Linggau","LLG"
-"479","33","Kota Pagar Alam","Pagar Alam","PGA"
-"480","33","Kota Palembang","Pelembang","PLG"
-"481","33","Kota Prabumulih","Prabumulih","PBM"
-"482","34","Kabupaten Asahan","Kisaran","KIS"
-"483","34","Kabupaten Batu Bara","Lima Puluh","LMP"
-"484","34","Kabupaten Dairi","Sidikalang","SDK"
-"485","34","Kabupaten Deli Serdang","Lubuk Pakam","LBP"
-"486","34","Kabupaten Humbang Hasundutan","Dolok Sanggul","DLS"
-"487","34","Kabupaten Karo","Kabanjahe","KBJ"
-"488","34","Kabupaten Labuhanbatu","Rantau Prapat","RAP"
-"489","34","Kabupaten Labuhanbatu Selatan","Kota Pinang","KPI"
-"490","34","Kabupaten Labuhanbatu Utara","Aek Kanopan","AKK"
-"491","34","Kabupaten Langkat","Stabat","STB"
-"492","34","Kabupaten Mandailing Natal","Panyabungan","PYB"
-"493","34","Kabupaten Nias","Gunungsitoli","GST"
-"494","34","Kabupaten Nias Barat","Lahomi","LHM"
-"495","34","Kabupaten Nias Selatan","Teluk Dalam","TLD"
-"496","34","Kabupaten Nias Utara","Lotu","LTU"
-"497","34","Kabupaten Padang Lawas","Sibuhuan","SBH"
-"498","34","Kabupaten Padang Lawas Utara","Gunung Tua","GNT"
-"499","34","Kabupaten Pakpak Bharat","Salak","SAL"
-"500","34","Kabupaten Samosir","Pangururan","PRR"
-"501","34","Kabupaten Serdang Bedagai","Sei Rampah","SRH"
-"502","34","Kabupaten Simalungun","Pematang Siantar","PMS"
-"503","34","Kabupaten Tapanuli Selatan","Padang Sidempuan","PSP"
-"504","34","Kabupaten Tapanuli Tengah","Sibolga","SBG"
-"505","34","Kabupaten Tapanuli Utara","Tarutung","TRT"
-"506","34","Kabupaten Toba Samosir","Balige","BLG"
-"507","34","Kota Binjai","Binjai","BNJ"
-"508","34","Kota Gunungsitoli","Gunungsitoli","GST"
-"509","34","Kota Medan","Medan","MDN"
-"510","34","Kota Padang Sidempuan","Padang Sidempuan","PSP"
-"511","34","Kota Pematangsiantar","Pematangsiantar","PMS"
-"512","34","Kota Sibolga","Sibolga","SBG"
-"513","34","Kota Tanjung Balai","Tanjung Balai","TJB"
-"514","34","Kota Tebing Tinggi","Tebing Tinggi","TBT"
+id,provinsi_id,kabupaten_kota,ibukota,k_bsni
+1,1,Kabupaten Aceh Barat,Meulaboh,MBO
+2,1,Kabupaten Aceh Barat Daya,Blangpidie,BPD
+3,1,Kabupaten Aceh Besar,Jantho,JTH
+4,1,Kabupaten Aceh Jaya,Calang,CAG
+5,1,Kabupaten Aceh Selatan,Tapak Tuan,TTN
+6,1,Kabupaten Aceh Singkil,Singkil,SKL
+7,1,Kabupaten Aceh Tamiang,Karang Baru,KRB
+8,1,Kabupaten Aceh Tengah,Takengon,TKN
+9,1,Kabupaten Aceh Tenggara,Kutacane,KTN
+10,1,Kabupaten Aceh Timur,Langsa,LGS
+11,1,Kabupaten Aceh Utara,Lhoksukon,LSK
+12,1,Kabupaten Bener Meriah,Simpang Tiga Redelong,STR
+13,1,Kabupaten Bireuen,Bireuen,BIR
+14,1,Kabupaten Gayo Lues,Blangkejeren,BKJ
+15,1,Kabupaten Nagan Raya,Suka Makmue,SKM
+16,1,Kabupaten Pidie,Sigli,SGI
+17,1,Kabupaten Pidie Jaya,Meureundu,MRN
+18,1,Kabupaten Simeulue,Sinabang,SNB
+19,1,Kota Banda Aceh,Banda Aceh,BNA
+20,1,Kota Langsa,Langsa,LGS
+21,1,Kota Lhokseumawe,Lhokseumawe,LSM
+22,1,Kota Sabang,Sabang,SAB
+23,1,Kota Subulussalam,Subulussalam,SUS
+24,2,Kabupaten Asahan,Kisaran,KIS
+25,2,Kabupaten Batu Bara,Lima Puluh,LMP
+26,2,Kabupaten Dairi,Sidikalang,SDK
+27,2,Kabupaten Deli Serdang,Lubuk Pakam,LBP
+28,2,Kabupaten Humbang Hasundutan,Dolok Sanggul,DLS
+29,2,Kabupaten Karo,Kabanjahe,KBJ
+30,2,Kabupaten Labuhanbatu,Rantau Prapat,RAP
+31,2,Kabupaten Labuhanbatu Selatan,Kota Pinang,KPI
+32,2,Kabupaten Labuhanbatu Utara,Aek Kanopan,AKK
+33,2,Kabupaten Langkat,Stabat,STB
+34,2,Kabupaten Mandailing Natal,Panyabungan,PYB
+35,2,Kabupaten Nias,Gunungsitoli,GST
+36,2,Kabupaten Nias Barat,Lahomi,LHM
+37,2,Kabupaten Nias Selatan,Teluk Dalam,TLD
+38,2,Kabupaten Nias Utara,Lotu,LTU
+39,2,Kabupaten Padang Lawas,Sibuhuan,SBH
+40,2,Kabupaten Padang Lawas Utara,Gunung Tua,GNT
+41,2,Kabupaten Pakpak Bharat,Salak,SAL
+42,2,Kabupaten Samosir,Pangururan,PRR
+43,2,Kabupaten Serdang Bedagai,Sei Rampah,SRH
+44,2,Kabupaten Simalungun,Pematang Siantar,PMS
+45,2,Kabupaten Tapanuli Selatan,Padang Sidempuan,PSP
+46,2,Kabupaten Tapanuli Tengah,Sibolga,SBG
+47,2,Kabupaten Tapanuli Utara,Tarutung,TRT
+48,2,Kabupaten Toba Samosir,Balige,BLG
+49,2,Kota Binjai,Binjai,BNJ
+50,2,Kota Gunungsitoli,Gunungsitoli,GST
+51,2,Kota Medan,Medan,MDN
+52,2,Kota Padang Sidempuan,Padang Sidempuan,PSP
+53,2,Kota Pematangsiantar,Pematangsiantar,PMS
+54,2,Kota Sibolga,Sibolga,SBG
+55,2,Kota Tanjung Balai,Tanjung Balai,TJB
+56,2,Kota Tebing Tinggi,Tebing Tinggi,TBT
+57,3,Kabupaten Agam,Lubuk Basung,LBB
+58,3,Kabupaten Dharmasraya,Pulau Punjung,PLJ
+59,3,Kabupaten Kepulauan Mentawai,Tuapejat,TPT
+60,3,Kabupaten Lima Puluh Kota,Sarilamak,SRK
+61,3,Kabupaten Padang Pariaman,Nagari Parit Malintang,NPM
+62,3,Kabupaten Pasaman,Lubuk Sikaping,LBS
+63,3,Kabupaten Pasaman Barat,Simpang Empat,SPE
+64,3,Kabupaten Pesisir Selatan,Painan,PNN
+65,3,Kabupaten Sijunjung (Sawah Lunto Sijunjung),Muaro Sijunjung,MRJ
+66,3,Kabupaten Solok,Arosuka,ARS
+67,3,Kabupaten Solok Selatan,Padang Aro,PDA
+68,3,Kabupaten Tanah Datar,Batusangkar,BSK
+69,3,Kota Bukittinggi,Bukittinggi,BKT
+70,3,Kota Padang,Padang,PAD
+71,3,Kota Padang Panjang,Padang Panjang,PDP
+72,3,Kota Pariaman,Pariaman,PMN
+73,3,Kota Payakumbuh,Payakumbuh,PYH
+74,3,Kota Sawahlunto,Sawahlunto,SWL
+75,3,Kota Solok,Solok,SLK
+76,4,Kabupaten Bengkalis,Bengkalis,BLS
+77,4,Kabupaten Indragiri Hilir,Tembilahan,TBH
+78,4,Kabupaten Indragiri Hulu,Rengat,RGT
+79,4,Kabupaten Kampar,Bangkinang,BKN
+80,4,Kabupaten Kepulauan Meranti,Tebing Tinggi,TTG
+81,4,Kabupaten Kuantan Singingi,Teluk Kuantan,TLK
+82,4,Kabupaten Pelalawan,Pangkalan Kerinci,PKK
+83,4,Kabupaten Rokan Hilir,Ujung Tanjung,UJT
+84,4,Kabupaten Rokan Hulu,Pasir Pengarairan,PRP
+85,4,Kabupaten Siak,Siak Sriindrapura,SAK
+86,4,Kota Dumai,Dumai,DUM
+87,4,Kota Pekanbaru,Pekanbaru,PBR
+88,5,Kabupaten Batanghari,Muara Bulian,MBN
+89,5,Kabupaten Bungo,Muara Bungo,MRB
+90,5,Kabupaten Kerinci,Sungai Penuh,SPN
+91,5,Kabupaten Merangin,Bangko,BKO
+92,5,Kabupaten Muaro Jambi,Sengeti,SNT
+93,5,Kabupaten Sarolangun,Sarolangun,SRL
+94,5,Kabupaten Tanjung Jabung Barat,Kuala Tungkal,KLT
+95,5,Kabupaten Tanjung Jabung Timur,Muara Sabak,MSK
+96,5,Kabupaten Tebo,Muara Tebo,MRT
+97,5,Kota Jambi,Jambi,JMB
+98,5,Kota Sungai Penuh,Sungai Penuh,SPN
+99,6,Kabupaten Banyuasin,Pangkalan Balai,PKB
+100,6,Kabupaten Empat Lawang,Tebing Tinggi,TBG
+101,6,Kabupaten Lahat,Lahat,LHT
+102,6,Kabupaten Muara Enim,Muara Enim,MRE
+103,6,Kabupaten Musi Banyuasin,Sekayu,SKY
+104,6,Kabupaten Musi Rawas,Muarabeliti,MBL
+105,6,Kabupaten Musi Rawas Utara,Rupit,RPT
+106,6,Kabupaten Ogan Ilir,Indralaya,IDL
+107,6,Kabupaten Ogan Komering Ilir,Kayu Agung,KAG
+108,6,Kabupaten Ogan Komering Ulu,Baturaja,BTA
+109,6,Kabupaten Ogan Komering Ulu Selatan (Oku Selatan),Muaradua,MRD
+110,6,Kabupaten Ogan Komering Ulu Timur (Oku Timur),Martapura,MPR
+111,6,Kabupaten Penukal Abab Lematang Ilir,Talang Ubi,TLB
+112,6,Kota Lubuk Linggau,Lubuk Linggau,LLG
+113,6,Kota Pagar Alam,Pagar Alam,PGA
+114,6,Kota Palembang,Pelembang,PLG
+115,6,Kota Prabumulih,Prabumulih,PBM
+116,7,Kabupaten Bengkulu Selatan,Manna,MNA
+117,7,Kabupaten Bengkulu Tengah,Karang Tinggi,KRT
+118,7,Kabupaten Bengkulu Utara,Arga Makmur,AGM
+119,7,Kabupaten Kaur,Bintuhan,BHN
+120,7,Kabupaten Kepahiang,Kepahiang,KPH
+121,7,Kabupaten Lebong,Tubei,TUB
+122,7,Kabupaten Muko Muko,Mukomuko,MKM
+123,7,Kabupaten Rejang Lebong,Curup,CRP
+124,7,Kabupaten Seluma,Tais,TAS
+125,7,Kota Bengkulu,Bengkulu,BGL
+126,8,Kabupaten Lampung Barat,Liwa,LIW
+127,8,Kabupaten Lampung Selatan,Kalianda,KLA
+128,8,Kabupaten Lampung Tengah,Gunung Sugih,GNS
+129,8,Kabupaten Lampung Timur,Sukadana,SDN
+130,8,Kabupaten Lampung Utara,Kotabumi,KTB
+131,8,Kabupaten Mesuji,Mesuji,MSJ
+132,8,Kabupaten Pesawaran,Gedong Tataan,GDT
+133,8,Kabupaten Pesisir Barat,Krui,KRU
+134,8,Kabupaten Pringsewu,Pringsewu,PRW
+135,8,Kabupaten Tanggamus,Kota Agung,KOT
+136,8,Kabupaten Tulang Bawang,Menggala,MGL
+137,8,Kabupaten Tulang Bawang Barat,Tulang Bawang Tengah,TWG
+138,8,Kabupaten Way Kanan,Blambangan Umpu,BBU
+139,8,Kota Bandar Lampung,Bandar Lampung,BDL
+140,8,Kota Metro,Metro,MET
+141,9,Kabupaten Bangka,Sungai Liat,SGL
+142,9,Kabupaten Bangka Barat,Mentok,MTK
+143,9,Kabupaten Bangka Selatan,Toboali,TBL
+144,9,Kabupaten Bangka Tengah,Koba,KBA
+145,9,Kabupaten Belitung,Tanjung Pandan,TDN
+146,9,Kabupaten Belitung Timur,Manggar,MGR
+147,9,Kota Pangkal Pinang,Pangkal Pinang,PGP
+148,10,Kabupaten Bintan,Bandar Seri Bentan,BSB
+149,10,Kabupaten Karimun,Tanjung Balai Karimun,TBK
+150,10,Kabupaten Kepulauan Anambas,Tarempa,TRP
+151,10,Kabupaten Lingga,Daik Lingga,DKL
+152,10,Kabupaten Natuna,Ranai,RAN
+153,10,Kota Batam,Batam,BTM
+154,10,Kota Tanjung Pinang,Tanjung Pinang,TPG
+155,11,Kabupaten Adm. Kepulauan Seribu,Kepulauan Seribu Utara,KSU
+156,11,Kota Adm. Jakarta Barat,Grogol Petamburan,GGP
+157,11,Kota Adm. Jakarta Pusat,Tanah Abang,TNA
+158,11,Kota Adm. Jakarta Selatan,Kebayoran Baru,KYB
+159,11,Kota Adm. Jakarta Timur,Cakung,CKG
+160,11,Kota Adm. Jakarta Utara,Tanjung Priok,TJP
+161,12,Kabupaten Bandung,Soreang,SOR
+162,12,Kabupaten Bandung Barat,Ngamprah,NPH
+163,12,Kabupaten Bekasi,Cikarang,CKR
+164,12,Kabupaten Bogor,Cibinong,CBI
+165,12,Kabupaten Ciamis,Ciamis,CMS
+166,12,Kabupaten Cianjur,Cianjur,CJR
+167,12,Kabupaten Cirebon,Sumber,SBR
+168,12,Kabupaten Garut,Garut,GRT
+169,12,Kabupaten Indramayu,Indramayu,IDM
+170,12,Kabupaten Karawang,Karawang,KWG
+171,12,Kabupaten Kuningan,Kuningan,KNG
+172,12,Kabupaten Majalengka,Majalengka,MJL
+173,12,Kabupaten Pangandaran,Parigi,PAG
+174,12,Kabupaten Purwakarta,Purwakarta,PWK
+175,12,Kabupaten Subang,Subang,SNG
+176,12,Kabupaten Sukabumi,Sukabumi,SBM
+177,12,Kabupaten Sumedang,Sumedang,SMD
+178,12,Kabupaten Tasikmalaya,Singaparna,SPA
+179,12,Kota Bandung,Bandung,BDG
+180,12,Kota Banjar,Banjar,BJR
+181,12,Kota Bekasi,Bekasi,BKS
+182,12,Kota Bogor,Bogor,BGR
+183,12,Kota Cimahi,Cimahi,CMH
+184,12,Kota Cirebon,Cirebon,CBN
+185,12,Kota Depok,Depok,DPK
+186,12,Kota Sukabumi,Sukabumi,SKB
+187,12,Kota Tasikmalaya,Tasikmalaya,TSM
+188,13,Kabupaten Banjarnegara,Banjarnegara,BNR
+189,13,Kabupaten Banyumas,Purwokerto,PWT
+190,13,Kabupaten Batang,Batang,BTG
+191,13,Kabupaten Blora,Blora,BLA
+192,13,Kabupaten Boyolali,Boyolali,BYL
+193,13,Kabupaten Brebes,Brebes,BBS
+194,13,Kabupaten Cilacap,Cilacap,CLP
+195,13,Kabupaten Demak,Demak,DMK
+196,13,Kabupaten Grobogan,Purwodadi,PWD
+197,13,Kabupaten Jepara,Jepara,JPA
+198,13,Kabupaten Karanganyar,Karanganyar,KRG
+199,13,Kabupaten Kebumen,Kebumen,KBM
+200,13,Kabupaten Kendal,Kendal,KDL
+201,13,Kabupaten Klaten,Klaten,KLN
+202,13,Kabupaten Kudus,Kudus,KDS
+203,13,Kabupaten Magelang,Mungkid,MKD
+204,13,Kabupaten Pati,Pati,PTI
+205,13,Kabupaten Pekalongan,Kajen,KJN
+206,13,Kabupaten Pemalang,Pemalang,PML
+207,13,Kabupaten Purbalingga,Purbalingga,PBG
+208,13,Kabupaten Purworejo,Purworejo,PWR
+209,13,Kabupaten Rembang,Rembang,RBG
+210,13,Kabupaten Semarang,Ungaran,UNR
+211,13,Kabupaten Sragen,Sragen,SGN
+212,13,Kabupaten Sukoharjo,Sukoharjo,SKH
+213,13,Kabupaten Tegal,Slawi,SLW
+214,13,Kabupaten Temanggung,Temanggung,TMG
+215,13,Kabupaten Wonogiri,Wonogiri,WNG
+216,13,Kabupaten Wonosobo,Wonosobo,WSB
+217,13,Kota Magelang,Magelang,MGG
+218,13,Kota Pekalongan,Pekalongan,PKL
+219,13,Kota Salatiga,Salatiga,SLT
+220,13,Kota Semarang,Semarang,SMG
+221,13,Kota Surakarta (Solo),Surakarta,SKT
+222,13,Kota Tegal,Tegal,TGL
+223,14,Kabupaten Bantul,Bantul,BTL
+224,14,Kabupaten Gunung Kidul,Wonosari,WNO
+225,14,Kabupaten Kulon Progo,Wates,WAT
+226,14,Kabupaten Sleman,Sleman,SMN
+227,14,Kota Yogyakarta,Yogyakarta,YYK
+228,15,Kabupaten Bangkalan,Bangkalan,BKL
+229,15,Kabupaten Banyuwangi,Banyuwangi,BYW
+230,15,Kabupaten Blitar,Kanigoro,KNR
+231,15,Kabupaten Bojonegoro,Bojonegoro,BJN
+232,15,Kabupaten Bondowoso,Bondowoso,BDW
+233,15,Kabupaten Gresik,Gresik,GSK
+234,15,Kabupaten Jember,Jember,JMR
+235,15,Kabupaten Jombang,Jombang,JBG
+236,15,Kabupaten Kediri,Kediri,KDR
+237,15,Kabupaten Lamongan,Lamongan,LMG
+238,15,Kabupaten Lumajang,Lumajang,LMJ
+239,15,Kabupaten Madiun,Mejayan,MJY
+240,15,Kabupaten Magetan,Magetan,MGT
+241,15,Kabupaten Malang,Kepanjen,KPN
+242,15,Kabupaten Mojokerto,Mojokerto,MJK
+243,15,Kabupaten Nganjuk,Nganjuk,NJK
+244,15,Kabupaten Ngawi,Ngawi,NGW
+245,15,Kabupaten Pacitan,Pacitan,PCT
+246,15,Kabupaten Pamekasan,Pamekasan,PMK
+247,15,Kabupaten Pasuruan,Pasuruan,PSR
+248,15,Kabupaten Ponorogo,Ponorogo,PNG
+249,15,Kabupaten Probolinggo,Kraksaan,KRS
+250,15,Kabupaten Sampang,Sampang,SPG
+251,15,Kabupaten Sidoarjo,Sidoarjo,SDA
+252,15,Kabupaten Situbondo,Situbondo,SIT
+253,15,Kabupaten Sumenep,Sumenep,SMP
+254,15,Kabupaten Trenggalek,Trenggalek,TRK
+255,15,Kabupaten Tuban,Tuban,TBN
+256,15,Kabupaten Tulungagung,Tulungagung,TLG
+257,15,Kota Batu,Batu,BTU
+258,15,Kota Blitar,Blitar,BLT
+259,15,Kota Kediri,Kediri,KDR
+260,15,Kota Madiun,Madiun,MAD
+261,15,Kota Malang,Malang,MLG
+262,15,Kota Mojokerto,Mojokerto,MJK
+263,15,Kota Pasuruan,Pasuruan,PSN
+264,15,Kota Probolinggo,Probolinggo,PBL
+265,15,Kota Surabaya,Surabaya,SBY
+266,16,Kabupaten Lebak,Rangkas Bitung,RKB
+267,16,Kabupaten Pandeglang,Pandeglang,PDG
+268,16,Kabupaten Serang,Serang,SRG
+269,16,Kabupaten Tangerang,Tigaraksa,TGR
+270,16,Kota Cilegon,Cilegon,CLG
+271,16,Kota Serang,Serang,SRG
+272,16,Kota Tangerang,Tangerang,TNG
+273,16,Kota Tangerang Selatan,Ciputat,CPT
+274,17,Kabupaten Badung,Mengwi,MGW
+275,17,Kabupaten Bangli,Bangli,BLI
+276,17,Kabupaten Buleleng,Singaraja,SGR
+277,17,Kabupaten Gianyar,Gianyar,GIN
+278,17,Kabupaten Jembrana,Negara,NGA
+279,17,Kabupaten Karangasem,Karangasem,KRA
+280,17,Kabupaten Klungkung,Semarapura,SRP
+281,17,Kabupaten Tabanan,Tabanan,TAB
+282,17,Kota Denpasar,Denpasar,DPR
+283,18,Kabupaten Bima,Woha,WHO
+284,18,Kabupaten Dompu,Dompu,DPU
+285,18,Kabupaten Lombok Barat,Gerung,GRG
+286,18,Kabupaten Lombok Tengah,Praya,PYA
+287,18,Kabupaten Lombok Timur,Selong,SEL
+288,18,Kabupaten Lombok Utara,Tanjung,TJN
+289,18,Kabupaten Sumbawa,Sumbawa Besar,SBW
+290,18,Kabupaten Sumbawa Barat,Taliwang,TLW
+291,18,Kota Bima,Bima,BIM
+292,18,Kota Mataram,Mataram,MTR
+293,19,Kabupaten Alor,Kalabahi,KLB
+294,19,Kabupaten Belu,Atambua,ATB
+295,19,Kabupaten Ende,Ende,END
+296,19,Kabupaten Flores Timur,Larantuka,LRT
+297,19,Kabupaten Kupang,Kupang,KPG
+298,19,Kabupaten Lembata,Lewoleba,LWB
+299,19,Kabupaten Malaka,Betun,BTN
+300,19,Kabupaten Manggarai,Ruteng,RTG
+301,19,Kabupaten Manggarai Barat,Labuan Bajo,LBJ
+302,19,Kabupaten Manggarai Timur,Borong,BRG
+303,19,Kabupaten Nagekeo,Mbay,MBY
+304,19,Kabupaten Ngada,Bajawa,BJW
+305,19,Kabupaten Rote Ndao,Baa,BAA
+306,19,Kabupaten Sabu Raijua,Sabu Barat,SBB
+307,19,Kabupaten Sikka,Maumere,MME
+308,19,Kabupaten Sumba Barat,Waikabubak,WKB
+309,19,Kabupaten Sumba Barat Daya,Tambolaka,TAM
+310,19,Kabupaten Sumba Tengah,Waibakul,WBL
+311,19,Kabupaten Sumba Timur,Waingapu,WGP
+312,19,Kabupaten Timor Tengah Selatan,Soe,SOE
+313,19,Kabupaten Timor Tengah Utara,Kefamenanu,KFM
+314,19,Kota Kupang,Kupang,KPG
+315,20,Kabupaten Bengkayang,Bengkayang,BEK
+316,20,Kabupaten Kapuas Hulu,Putussibau,PTS
+317,20,Kabupaten Kayong Utara,Sukadane,SKD
+318,20,Kabupaten Ketapang,Ketapang,KTP
+319,20,Kabupaten Kubu Raya,Sungai Raya,SRY
+320,20,Kabupaten Landak,Ngabang,NBA
+321,20,Kabupaten Melawi,Nanga Pinoh,NGP
+322,20,Kabupaten Mempawah,Mempawah,MPW
+323,20,Kabupaten Sambas,Sambas,SBS
+324,20,Kabupaten Sanggau,Sanggau,SAG
+325,20,Kabupaten Sekadau,Sekadau,SED
+326,20,Kabupaten Sintang,Sintang,STG
+327,20,Kota Pontianak,Pontianak,PTK
+328,20,Kota Singkawang,Singkawang,SKW
+329,21,Kabupaten Barito Selatan,Buntok,BNT
+330,21,Kabupaten Barito Timur,Tamiang Layang,TML
+331,21,Kabupaten Barito Utara,Muara Teweh,MTW
+332,21,Kabupaten Gunung Mas,Kuala Kurun,KKN
+333,21,Kabupaten Kapuas,Kuala Kapuas,KLK
+334,21,Kabupaten Katingan,Kasongan,KSN
+335,21,Kabupaten Kotawaringin Barat,Pangkalan Bun,PBU
+336,21,Kabupaten Kotawaringin Timur,Sampit,SPT
+337,21,Kabupaten Lamandau,Nanga Bulik,NGB
+338,21,Kabupaten Murung Raya,Puruk Cahu,PRC
+339,21,Kabupaten Pulang Pisau,Pulang Pisau,PPS
+340,21,Kabupaten Seruyan,Kuala Pembuang,KLP
+341,21,Kabupaten Sukamara,Sukamara,SKR
+342,21,Kota Palangka Raya,Palangkaraya,PLK
+343,22,Kabupaten Balangan,Paringin,PRN
+344,22,Kabupaten Banjar,Martapura,MTP
+345,22,Kabupaten Barito Kuala,Marabahan,MRH
+346,22,Kabupaten Hulu Sungai Selatan,Kandangan,KGN
+347,22,Kabupaten Hulu Sungai Tengah,Barabai,BRB
+348,22,Kabupaten Hulu Sungai Utara,Amuntai,AMT
+349,22,Kabupaten Kotabaru,Kotabaru,KBR
+350,22,Kabupaten Tabalong,Tanjung,TJG
+351,22,Kabupaten Tanah Bumbu,Batulicin,BLN
+352,22,Kabupaten Tanah Laut,Pelaihari,PLI
+353,22,Kabupaten Tapin,Rantau,RTA
+354,22,Kota Banjarbaru,Banjarbaru,BJB
+355,22,Kota Banjarmasin,Banjarmasin,BJM
+356,23,Kabupaten Berau,Tanjung Redeb,TNR
+357,23,Kabupaten Kutai Barat,Sendawar,SDW
+358,23,Kabupaten Kutai Kartanegara,Tenggarong,TRG
+359,23,Kabupaten Kutai Timur,Sanggatta,SGT
+360,23,Kabupaten Mahakam Ulu,Ujoh Bilang,UJB
+361,23,Kabupaten Paser,Tanah Grogot,TGT
+362,23,Kabupaten Penajam Paser Utara,Penajam,PNJ
+363,23,Kota Balikpapan,Balikpapan,BPP
+364,23,Kota Bontang,Bontang,BON
+365,23,Kota Samarinda,Samarinda,SMR
+366,23,Kabupaten Bulungan (Bulongan),Tanjung Selor,TJS
+367,23,Kabupaten Malinau,Malinau,MLN
+368,23,Kabupaten Nunukan,Nunukan,NNK
+369,23,Kabupaten Tana Tidung,Tideng Pale,TDP
+370,23,Kota Tarakan,Tarakan,TAR
+371,25,Kabupaten Bolaang Mongondow,Lolak,LLK
+372,25,Kabupaten Bolaang Mongondow Selatan,Bolaang Uki,BLU
+373,25,Kabupaten Bolaang Mongondow Timur,Tutuyan,TTY
+374,25,Kabupaten Bolaang Mongondow Utara,Boroko,BRK
+375,25,Kabupaten Kepulauan Sangihe,Tahuna,THN
+376,25,Kabupaten Kepulauan Siau Tagulandang Biaro (Sitaro),Ondong Siau,ODS
+377,25,Kabupaten Kepulauan Talaud,Melongguane,MGN
+378,25,Kabupaten Minahasa,Tondano,TNN
+379,25,Kabupaten Minahasa Selatan,Amurang,AMR
+380,25,Kabupaten Minahasa Tenggara,Ratahan,RTN
+381,25,Kabupaten Minahasa Utara,Air Madidi,ARM
+382,25,Kota Bitung,Bitung,BIT
+383,25,Kota Kotamobagu,Kotamobagu,KTG
+384,25,Kota Manado,Manado,MND
+385,25,Kota Tomohon,Tomohon,TMH
+386,26,Kabupaten Banggai,Luwuk,LWK
+387,26,Kabupaten Banggai Kepulauan,Salakan,SKN
+388,26,Kabupaten Banggai Laut,Banggai,BGI
+389,26,Kabupaten Buol,Buol,BUL
+390,26,Kabupaten Donggala,Donggala,DGL
+391,26,Kabupaten Morowali,Bungku,BGK
+392,26,Kabupaten Morowali Utara,Kolonodale,KND
+393,26,Kabupaten Parigi Moutong,Parigi,PRG
+394,26,Kabupaten Poso,Poso,PSO
+395,26,Kabupaten Sigi,Sigi Biromaru,SGB
+396,26,Kabupaten Tojo Una-Una,Ampana,APN
+397,26,Kabupaten Toli-Toli,Toli Toli,TLI
+398,26,Kota Palu,Palu,PAL
+399,27,Kabupaten Bantaeng,Bantaeng,BAN
+400,27,Kabupaten Barru,Barru,BAR
+401,27,Kabupaten Bone,Watampone,WTP
+402,27,Kabupaten Bulukumba,Bulukumba,BLK
+403,27,Kabupaten Enrekang,Enrekang,ENR
+404,27,Kabupaten Gowa,Sungguminasa,SGM
+405,27,Kabupaten Jeneponto,Jeneponto,JNP
+406,27,Kabupaten Selayar (Kepulauan Selayar),Benteng,BEN
+407,27,Kabupaten Luwu,Palopo,PLP
+408,27,Kabupaten Luwu Timur,Malili,MLL
+409,27,Kabupaten Luwu Utara,Masamba,MSB
+410,27,Kabupaten Maros,Maros,MRS
+411,27,Kabupaten Pangkajene Kepulauan,Pangkajene,PKJ
+412,27,Kabupaten Pinrang,Pinrang,PIN
+413,27,Kabupaten Sidenreng Rappang (Sidrap),Sidenreng,SDR
+414,27,Kabupaten Sinjai,Sinjai,SNJ
+415,27,Kabupaten Soppeng,Watan Soppeng,WNS
+416,27,Kabupaten Takalar,Takalar,TKA
+417,27,Kabupaten Tana Toraja,Makale,MAK
+418,27,Kabupaten Toraja Utara,Rantepao,RTP
+419,27,Kabupaten Wajo,Sengkang,SKG
+420,27,Kota Makassar,Makassar,MKS
+421,27,Kota Palopo,Palopo,PLP
+422,27,Kota Parepare,Pare Pare,PRE
+423,28,Kabupaten Bombana,Rumbia,RMB
+424,28,Kabupaten Buton,Pasar Wajo,PSW
+425,28,Kabupaten Buton Selatan,Batauga,BAG
+426,28,Kabupaten Buton Tengah,Labungkari,LBK
+427,28,Kabupaten Buton Utara,Buranga,BNG
+428,28,Kabupaten Kolaka,Kolaka,KKA
+429,28,Kabupaten Kolaka Timur,Tirawuta,TRW
+430,28,Kabupaten Kolaka Utara,Lasusua,LSS
+431,28,Kabupaten Konawe,Unaaha,UNH
+432,28,Kabupaten Konawe Kepulauan,Langara,LGR
+433,28,Kabupaten Konawe Selatan,Andoolo,ADL
+434,28,Kabupaten Konawe Utara,Wanggudu,WGD
+435,28,Kabupaten Muna,Raha,RAH
+436,28,Kabupaten Muna Barat,Sawerigadi,SWG
+437,28,Kabupaten Wakatobi,Wangi Wangi,WGW
+438,28,Kota Baubau,Bau-Bau,BAU
+439,28,Kota Kendari,Kendari,KDI
+440,29,Kabupaten Boalemo,Tilamuta,TMT
+441,29,Kabupaten Bone Bolango,Suwawa,SWW
+442,29,Kabupaten Gorontalo,Limboto,LBT
+443,29,Kabupaten Gorontalo Utara,Kwandang,KWD
+444,29,Kabupaten Pohuwato,Marisa,MAR
+445,29,Kota Gorontalo,Gorontalo,GTO
+446,30,Kabupaten Majene,Majene,MJN
+447,30,Kabupaten Mamasa,Mamasa,MMS
+448,30,Kabupaten Mamuju,Mamuju,MAM
+449,30,Kabupaten Mamuju Tengah,Tobadak,TBD
+450,30,Kabupaten Mamuju Utara,Pasangkayu,PKY
+451,30,Kabupaten Polewali Mandar,Polewali,PLW
+452,31,Kabupaten Buru,Namlea,NLA
+453,31,Kabupaten Buru Selatan,Namrole,NMR
+454,31,Kabupaten Kepulauan Aru,Dobo,DOB
+455,31,Kabupaten Maluku Barat Daya,Tiakur,TKR
+456,31,Kabupaten Maluku Tengah,Masohi,MSH
+457,31,Kabupaten Maluku Tenggara,Tual,TUL
+458,31,Kabupaten Maluku Tenggara Barat,Saumlaki,SML
+459,31,Kabupaten Seram Bagian Barat,Dataran Hunipopu,DRH
+460,31,Kabupaten Seram Bagian Timur,Dataran Hunimoa,DTH
+461,31,Kota Ambon,Ambon,AMB
+462,31,Kota Tual,Tual,TUL
+463,32,Kabupaten Halmahera Barat,Jailolo,JLL
+464,32,Kabupaten Halmahera Selatan,Labuha,LBA
+465,32,Kabupaten Halmahera Tengah,Weda,WED
+466,32,Kabupaten Halmahera Timur,Maba,MAB
+467,32,Kabupaten Halmahera Utara,Tobelo,TOB
+468,32,Kabupaten Kepulauan Sula,Sanana,SNN
+469,32,Kabupaten Pulau Morotai,Daruba,DRB
+470,32,Kabupaten Pulau Taliabu,Bobong,BOB
+471,32,Kota Ternate,Ternate,TTE
+472,32,Kota Tidore Kepulauan,Tidore,TDR
+473,33,Kabupaten Asmat,Agats,AGT
+474,33,Kabupaten Biak Numfor,Biak,BIK
+475,33,Kabupaten Boven Digoel,Tanah Merah,TMR
+476,33,Kabupaten Deiyai (Deliyai),Tigi,TIG
+477,33,Kabupaten Dogiyai,Kigamani,KGM
+478,33,Kabupaten Intan Jaya,Sugapa,SGP
+479,33,Kabupaten Jayapura,Jayapura,JAP
+480,33,Kabupaten Jayawijaya,Wamena,WAM
+481,33,Kabupaten Keerom,Waris,WRS
+482,33,Kabupaten Kepulauan Yapen (Yapen Waropen),Serui,SRU
+483,33,Kabupaten Lanny Jaya,Tiom,TOM
+484,33,Kabupaten Mamberamo Raya,Burmeso,BRM
+485,33,Kabupaten Mamberamo Tengah,Kobakma,KBK
+486,33,Kabupaten Mappi,Kepi,KEP
+487,33,Kabupaten Merauke,Merauke,MRK
+488,33,Kabupaten Mimika,Timika,TIM
+489,33,Kabupaten Nabire,Nabire,NAB
+490,33,Kabupaten Nduga,Kenyam,KYM
+491,33,Kabupaten Paniai,Enarotali,ERT
+492,33,Kabupaten Pegunungan Bintang,Oksibil,OSB
+493,33,Kabupaten Puncak,Ilaga,ILG
+494,33,Kabupaten Puncak Jaya,Mulia,MUL
+495,33,Kabupaten Sarmi,Sarmi,SMI
+496,33,Kabupaten Supiori,Sorendiweri,SRW
+497,33,Kabupaten Tolikara,Karubaga,KBG
+498,33,Kabupaten Waropen,Botawa,BTW
+499,33,Kabupaten Yahukimo,Sumohai,SMH
+500,33,Kabupaten Yalimo,Elelim,ELL
+501,33,Kota Jayapura,Jayapura,JAP
+502,34,Kabupaten Fakfak,Fak Fak,FFK
+503,34,Kabupaten Kaimana,Kaimana,KMN
+504,34,Kabupaten Manokwari,Manokwari,MNK
+505,34,Kabupaten Manokwari Selatan,Ransiki,RNK
+506,34,Kabupaten Maybrat,Aifat,AFT
+507,34,Kabupaten Pegunungan Arfak,Anggi,ANG
+508,34,Kabupaten Raja Ampat,Waisai,WAS
+509,34,Kabupaten Sorong,Aimas,AMS
+510,34,Kabupaten Sorong Selatan,Teminabuan,TMB
+511,34,Kabupaten Tambrauw,Fef,FEF
+512,34,Kabupaten Teluk Bintuni,Bintuni,BTI
+513,34,Kabupaten Teluk Wondama,Rasiei,RAS
+514,34,Kota Sorong,Sorong,SON
