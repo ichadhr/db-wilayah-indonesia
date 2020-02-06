@@ -364,11 +364,11 @@ id,provinsi_id,kabupaten_kota,ibukota,k_bsni
 363,23,Kota Balikpapan,Balikpapan,BPP
 364,23,Kota Bontang,Bontang,BON
 365,23,Kota Samarinda,Samarinda,SMR
-366,23,Kabupaten Bulungan (Bulongan),Tanjung Selor,TJS
-367,23,Kabupaten Malinau,Malinau,MLN
-368,23,Kabupaten Nunukan,Nunukan,NNK
-369,23,Kabupaten Tana Tidung,Tideng Pale,TDP
-370,23,Kota Tarakan,Tarakan,TAR
+366,24,Kabupaten Bulungan (Bulongan),Tanjung Selor,TJS
+367,24,Kabupaten Malinau,Malinau,MLN
+368,24,Kabupaten Nunukan,Nunukan,NNK
+369,24,Kabupaten Tana Tidung,Tideng Pale,TDP
+370,24,Kota Tarakan,Tarakan,TAR
 371,25,Kabupaten Bolaang Mongondow,Lolak,LLK
 372,25,Kabupaten Bolaang Mongondow Selatan,Bolaang Uki,BLU
 373,25,Kabupaten Bolaang Mongondow Timur,Tutuyan,TTY
