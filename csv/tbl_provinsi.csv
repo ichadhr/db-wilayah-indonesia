@@ -1,35 +1,35 @@
-id,provinsi,p_bsni
-1,Aceh,ID-AC
-2,Sumatra Utara,ID-SU
-3,Sumatra Barat,ID-SB
-4,Riau,ID-RI
-5,Jambi,ID-JA
-6,Sumatra Selatan,ID-SS
-7,Bengkulu,ID-BE
-8,Lampung,ID-LA
-9,Kepulauan Bangka Belitung,ID-BB
-10,Kepulauan Riau,ID-KR
-11,Daerah Khusus Ibukota Jakarta,ID-JB
-12,Jawa Barat,ID-JB
-13,Jawa Tengah,ID-JT
-14,Daerah Istimewa Yogyakarta,ID-YO
-15,Jawa Timur,ID-JI
-16,Banten,ID-BT
-17,Bali,ID-BA
-18,Nusa Tenggara Barat,ID-NB
-19,Nusa Tenggara Timur,ID-NT
-20,Kalimantan Barat,ID-KB
-21,Kalimantan Tengah,ID-KT
-22,Kalimantan Selatan,ID-KS
-23,Kalimantan Timur,ID-KI
-24,Kalimantan Utara,ID-KU
-25,Sulawesi Utara,ID-SA
-26,Sulawesi Tengah,ID-ST
-27,Sulawesi Selatan,ID-SN
-28,Sulawesi Tenggara,ID-SG
-29,Gorontalo,ID-GO
-30,Sulawesi Barat,ID-SR
-31,Maluku,ID-MA
-32,Maluku Utara,ID-MU
-33,Papua,ID-PA
-34,Papua Barat,ID-PB
+id,provinsi,ibukota,p_bsni
+1,Aceh,Banda Aceh,ID-AC
+2,Sumatra Utara,Medan,ID-SU
+3,Sumatra Barat,Padang,ID-SB
+4,Riau,Pekanbaru,ID-RI
+5,Jambi,Jambi,ID-JA
+6,Sumatra Selatan,Palembang,ID-SS
+7,Bengkulu,Bengkulu,ID-BE
+8,Lampung,Bandar Lampung,ID-LA
+9,Kepulauan Bangka Belitung,Pangkalpinang,ID-BB
+10,Kepulauan Riau,Tanjungpinang,ID-KR
+11,Daerah Khusus Ibukota Jakarta,Jakarta,ID-JB
+12,Jawa Barat,Bandung,ID-JB
+13,Jawa Tengah,Semarang,ID-JT
+14,Daerah Istimewa Yogyakarta,Yogyakarta,ID-YO
+15,Jawa Timur,Surabaya,ID-JI
+16,Banten,Serang,ID-BT
+17,Bali,Denpasar,ID-BA
+18,Nusa Tenggara Barat,Mataram,ID-NB
+19,Nusa Tenggara Timur,Kupang,ID-NT
+20,Kalimantan Barat,Pontianak,ID-KB
+21,Kalimantan Tengah,Palangka Raya,ID-KT
+22,Kalimantan Selatan,Banjarmasin,ID-KS
+23,Kalimantan Timur,Samarinda,ID-KI
+24,Kalimantan Utara,Tanjung Selor,ID-KU
+25,Sulawesi Utara,Manado,ID-SA
+26,Sulawesi Tengah,Palu,ID-ST
+27,Sulawesi Selatan,Makassar,ID-SN
+28,Sulawesi Tenggara,Kendari,ID-SG
+29,Gorontalo,Gorontalo,ID-GO
+30,Sulawesi Barat,Mamuju,ID-SR
+31,Maluku,Ambon,ID-MA
+32,Maluku Utara,Sofifi,ID-MU
+33,Papua,Jayapura,ID-PA
+34,Papua Barat,Manokwari,ID-PB

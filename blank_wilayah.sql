@@ -75,9 +75,11 @@ DROP TABLE IF EXISTS `tbl_provinsi`;
 CREATE TABLE `tbl_provinsi` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `provinsi` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ibukota` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `p_bsni` char(5) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `provinsi` (`provinsi`) USING BTREE,
+  KEY  `ibukota_provinsi` (`ibukota`) USING BTREE,
   KEY `pbsni` (`p_bsni`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
