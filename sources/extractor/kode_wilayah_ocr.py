@@ -119,7 +119,7 @@ class KodeWilayahOCR:
     # Apply Cyrillic to Latin conversion to all text fields
             processed_record = {}
             for col_name, value in record.items():
-                if isinstance(value, str):
+                if isinstance(value, str) and re.search(r'[\u0400-\u04FF]', value):
                     processed_record[col_name] = convert_cyrillic_to_latin(value)
                 else:
                     processed_record[col_name] = value
