@@ -6,18 +6,24 @@ It downloads the required images, converts them to PDF, and then performs OCR
 to extract structured table data.
 """
 
-from marker.converters.table import TableConverter
+import os
+import re
+from io import StringIO
+
+import polars as pl
+from extractor.scrapers.singkatan import download_singkatan_images
 from marker.config.parser import ConfigParser
+from marker.converters.table import TableConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
-import os
-import polars as pl
-from io import StringIO
-import re
-from utils.paths import get_datas_dir, get_parquet_output_path, get_csv_output_path, get_json_output_path
+from models.kode_wilayah import KodeWilayah, TableKodeWilayah
 from utils.converter import convert_cyrillic_to_latin
-from extractor.scrapers.singkatan import download_singkatan_images
-from models.kode_wilayah import TableKodeWilayah, KodeWilayah
+from utils.paths import (
+    get_csv_output_path,
+    get_datas_dir,
+    get_json_output_path,
+    get_parquet_output_path,
+)
 
 # Constants
 SNI_DOC_ID = "SNI_7657-2023"
@@ -53,7 +59,7 @@ class KodeWilayahOCR:
         self.config_parser = ConfigParser(self.config)
         self.converter = TableConverter(
             config=self.config_parser.generate_config_dict(),
-            artifact_dict=create_model_dict()
+            artifact_dict=create_model_dict(),
         )
 
     def extract_kode_wilayah(self) -> TableKodeWilayah:
@@ -71,12 +77,20 @@ class KodeWilayahOCR:
         pdf_path = os.path.join(get_datas_dir(), f"{SNI_DOC_ID}.pdf")
 
         if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"PDF not found at {pdf_path}. Make sure download_singkatan_images() completed successfully.")
+            raise FileNotFoundError(
+                f"PDF not found at {pdf_path}. Make sure download_singkatan_images() completed successfully."
+            )
 
         # Step 3: Perform OCR on PDF
-        print(f"Performing OCR on {pdf_path}...")
+        # Convert 0-based page range to 1-based for display
+        if "-" in self.page_range:
+            start, end = self.page_range.split("-")
+            display_pages = f"{int(start) + 1}-{int(end) + 1}"
+        else:
+            display_pages = str(int(self.page_range) + 1)
+        print(f"Performing OCR on {pdf_path} (pages {display_pages})...")
         rendered = self.converter(pdf_path)
-        text, _, images = text_from_rendered(rendered)
+        text, _, _ = text_from_rendered(rendered)
 
         # Step 4: Process and clean the extracted table data
         cleaned_records = self._process_table_text(text)
@@ -99,47 +113,65 @@ class KodeWilayahOCR:
             List of cleaned record dictionaries
         """
         # Clean and parse table markdown
-        table_md = '\n'.join([line for line in text.split('\n') if not line.startswith('|-----') and line.strip()])
-        df = pl.read_csv(StringIO(table_md), separator='|', has_header=True)
+        table_md = "\n".join(
+            [
+                line
+                for line in text.split("\n")
+                if not line.startswith("|-----") and line.strip()
+            ]
+        )
+        df = pl.read_csv(StringIO(table_md), separator="|", has_header=True)
         df = df.select([col for col in df.columns if col.strip()])
         columns = df.columns
 
         # Identify column names
-        no_col = next(col for col in columns if 'No' in col)
-        prov_col = next(col for col in columns if 'Provinsi' in col)
-        kab_col = next(col for col in columns if 'Kabupaten' in col)
-        nama_col = next(col for col in columns if 'Nama Kota' in col)
-        singk_col = next(col for col in columns if 'Singkatan' in col)
-        parent_col = next(col for col in columns if 'Parent' in col)
+        no_col = next(col for col in columns if "No" in col)
+        prov_col = next(col for col in columns if "Provinsi" in col)
+        kab_col = next(col for col in columns if "Kabupaten" in col)
+        nama_col = next(col for col in columns if "Nama Kota" in col)
+        singk_col = next(col for col in columns if "Singkatan" in col)
+        parent_col = next(col for col in columns if "Parent" in col)
 
         # Clean and validate records
         cleaned_records = []
 
         for record in df.to_dicts():
-    # Apply Cyrillic to Latin conversion to all text fields
+            # Clean up OCR text: convert Cyrillic look-alike characters to Latin equivalents
             processed_record = {}
             for col_name, value in record.items():
-                if isinstance(value, str) and re.search(r'[\u0400-\u04FF]', value):
+                if isinstance(value, str) and re.search(r"[\u0400-\u04FF]", value):
                     processed_record[col_name] = convert_cyrillic_to_latin(value)
                 else:
                     processed_record[col_name] = value
-            
+
             # Clean the 'No' field specifically for number extraction
             no_clean = processed_record[no_col]
-            no_str = re.sub(r'\D', '', no_clean)
+            no_str = re.sub(r"\D", "", no_clean)
             if not no_str:
                 continue  # Skip invalid records
 
             no = int(no_str)
 
-            cleaned_records.append({
-                'no': no,
-                'provinsi': processed_record[prov_col].strip().replace('<br>', ' '),
-                'kabupaten_kota': processed_record[kab_col].strip().replace('<br>', ' '),
-                'nama_kota': processed_record[nama_col].strip().replace('<br>', ' '),
-                'singkatan_nama_kota': processed_record[singk_col].strip().replace('<br>', ' ').upper(),
-                'parent_subdivision': processed_record[parent_col].strip().replace('<br>', ' ').upper()
-            })
+            cleaned_records.append(
+                {
+                    "no": no,
+                    "provinsi": processed_record[prov_col].strip().replace("<br>", " "),
+                    "kabupaten_kota": processed_record[kab_col]
+                    .strip()
+                    .replace("<br>", " "),
+                    "nama_kota": processed_record[nama_col]
+                    .strip()
+                    .replace("<br>", " "),
+                    "singkatan_nama_kota": processed_record[singk_col]
+                    .strip()
+                    .replace("<br>", " ")
+                    .upper(),
+                    "parent_subdivision": processed_record[parent_col]
+                    .strip()
+                    .replace("<br>", " ")
+                    .upper(),
+                }
+            )
 
         return cleaned_records
 
@@ -153,14 +185,16 @@ class KodeWilayahOCR:
         df_clean = pl.DataFrame(records)
 
         # Save as Parquet
-        df_clean.write_parquet(get_parquet_output_path('kode_wilayah.parquet'))
+        df_clean.write_parquet(get_parquet_output_path("kode_wilayah.parquet"))
 
         # Save as CSV
-        df_clean.write_csv(get_csv_output_path('kode_wilayah.csv'))
+        df_clean.write_csv(get_csv_output_path("kode_wilayah.csv"))
 
         # Save as JSON
         table = TableKodeWilayah(records=[KodeWilayah(**r) for r in records])
-        with open(get_json_output_path('kode_wilayah.json'), 'w', encoding='utf-8') as f:
+        with open(
+            get_json_output_path("kode_wilayah.json"), "w", encoding="utf-8"
+        ) as f:
             f.write(table.model_dump_json())
 
         print("Kode wilayah data saved successfully in parquet, csv, and json formats.")

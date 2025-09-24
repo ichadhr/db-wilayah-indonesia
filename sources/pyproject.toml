@@ -19,7 +19,10 @@ dependencies = [
 
 # The package is needed for vscode Jupyter Notebooks
 [dependency-groups]
-dev = ["ipykernel>=6.30.1", "ipywidgets>=8.1.7"]
+dev = [
+    "ipykernel>=6.30.1",
+    "ipywidgets>=8.1.7",
+]
 
 # The package is only installed on Linux systems
 # environments = ["sys_platform == 'linux' and os_name == 'posix'"]

@@ -1,5 +1,7 @@
-from pydantic import BaseModel
 from typing import List
+
+from pydantic import BaseModel
+
 
 # Define the Pydantic model
 class KodeWilayah(BaseModel):

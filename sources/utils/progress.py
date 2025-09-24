@@ -5,10 +5,10 @@ This module provides progress bars with statistics support,
 migrated from Rich to tqdm for simpler dependency management.
 """
 
-from typing import Optional, Any, Dict
 from contextlib import contextmanager
+from typing import Optional
+
 from tqdm import tqdm
-import time
 
 
 class ProgressManager:
@@ -18,7 +18,12 @@ class ProgressManager:
         self.active_progresses = {}
 
     @contextmanager
-    def pdf_processing_progress(self, total_pages: int, table_format: str = "provinsi_index", description: str = "Processing PDF"):
+    def pdf_processing_progress(
+        self,
+        total_pages: int,
+        table_format: str = "provinsi_index",
+        description: str = "Processing PDF",
+    ):
         """Context manager for PDF processing with table-format-specific descriptions."""
         # Create tqdm progress bar with custom format
         progress_bar = tqdm(
@@ -30,7 +35,9 @@ class ProgressManager:
 
         # Set initial postfix
         rate = progress_bar.format_dict.get("rate", 0) or 0
-        progress_bar.set_postfix_str(f"{rate:.0f} pages/s, 0 Provinsi, 0 Kabupaten/Kota")
+        progress_bar.set_postfix_str(
+            f"{rate:.0f} pages/s, 0 Provinsi, 0 Kabupaten/Kota"
+        )
 
         progress_context = PDFProgressContext(progress_bar, total_pages)
         try:
@@ -46,7 +53,7 @@ class ProgressManager:
             total=total_items,
             desc=description,
             unit="item",
-            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}{postfix}]"
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}{postfix}]",
         )
 
         # Set initial postfix
@@ -69,10 +76,15 @@ class PDFProgressContext:
         self.stats = {
             "pages_processed": 0,
             "provinces_found": 0,
-            "kabupaten_kota_count": 0
+            "kabupaten_kota_count": 0,
         }
 
-    def update_stats(self, provinces_found: Optional[int] = None, kabupaten_kota_count: Optional[int] = None, **kwargs):
+    def update_stats(
+        self,
+        provinces_found: Optional[int] = None,
+        kabupaten_kota_count: Optional[int] = None,
+        **kwargs,
+    ):
         """Update progress statistics."""
         if provinces_found is not None:
             self.stats["provinces_found"] = provinces_found

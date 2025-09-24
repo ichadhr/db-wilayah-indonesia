@@ -1,6 +1,5 @@
-import os
-from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from dotenv import load_dotenv
+from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from utils.paths import ensure_output_dirs
 
 

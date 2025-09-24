@@ -6,17 +6,18 @@ images from bsn.go.id, converting them to PDF format for further processing.
 """
 
 import os
-import requests
 import time
-from utils.progress import progress_manager
-from utils.paths import get_datas_dir, get_image_output_path, ensure_output_dirs
+
 import img2pdf
+import requests
 from PIL import Image
+from utils.paths import ensure_output_dirs, get_datas_dir, get_image_output_path
+from utils.progress import progress_manager
 
 # Constants
 SNI_DOC_ID = "SNI_7657-2023"
 DOWNLOAD_DELAY = 1  # seconds between downloads
-RETRY_DELAY = 1     # seconds between retries
+RETRY_DELAY = 1  # seconds between retries
 
 
 def validate_image(filepath: str) -> bool:
@@ -41,11 +42,15 @@ def download_singkatan_images():
     base_url = "https://akses-sni.bsn.go.id/dokumen/2023/SNI%207657-2023/files/large/"
     # Ensure output directories exist
     ensure_output_dirs()
-    images_dir = get_image_output_path(SNI_DOC_ID)  # Get the images directory path with subfolder
+    images_dir = get_image_output_path(
+        SNI_DOC_ID
+    )  # Get the images directory path with subfolder
     print(images_dir)
     os.makedirs(images_dir, exist_ok=True)
 
-    with progress_manager.download_progress(total_items=45, description="Downloading images") as progress_ctx:
+    with progress_manager.download_progress(
+        total_items=45, description="Downloading images"
+    ) as progress_ctx:
         for i in range(1, 46):
             filename = f"{i}.jpg"
             filepath = os.path.join(images_dir, filename)
@@ -64,22 +69,28 @@ def download_singkatan_images():
                     response.raise_for_status()
 
                     # Save the file
-                    with open(filepath, 'wb') as f:
+                    with open(filepath, "wb") as f:
                         f.write(response.content)
 
                     # Validate the downloaded image
                     if validate_image(filepath):
                         break  # Success
                     else:
-                        print(f"Downloaded {filename} is invalid, retrying... (attempt {attempt + 1}/{max_retries})")
+                        print(
+                            f"Downloaded {filename} is invalid, retrying... (attempt {attempt + 1}/{max_retries})"
+                        )
                         if attempt == max_retries - 1:
-                            print(f"Failed to download valid {filename} after {max_retries} attempts")
+                            print(
+                                f"Failed to download valid {filename} after {max_retries} attempts"
+                            )
                         else:
                             time.sleep(RETRY_DELAY)  # Delay before retry
                         continue
 
                 except requests.RequestException as e:
-                    print(f"Failed to download {filename} (attempt {attempt + 1}/{max_retries}): {e}")
+                    print(
+                        f"Failed to download {filename} (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
                     if attempt == max_retries - 1:
                         print(f"Giving up on {filename}")
                     else:
@@ -113,6 +124,7 @@ def download_singkatan_images():
             print(f"Failed to create PDF: {e}")
     else:
         print("No images found to convert to PDF")
+
 
 if __name__ == "__main__":
     download_singkatan_images()
