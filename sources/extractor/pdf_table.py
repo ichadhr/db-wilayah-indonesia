@@ -3,7 +3,8 @@ from typing import List, Any, Optional
 import pdfplumber
 from IPython.display import display
 from models.pdf_table import ProvinceIndexData
-from extractor.utils import *
+from utils.converter import *
+from utils.progress import progress_manager
 
 
 class PDFTableExtractorBase:
@@ -48,9 +49,12 @@ class PDFTableExtractorBase:
                 debug_im_settings = im.debug_tablefinder(self.index_settings)
                 display(debug_im_settings)
 
-    def extract_tables(self) -> List[List[Any]]:
+    def extract_tables(self, table_format: str = "unknown") -> List[List[Any]]:
         """
         Extract tables from the specified page range of the PDF.
+
+        Args:
+            table_format: Format of the table being extracted (for progress display)
 
         Returns:
             List of table rows with duplicate headers merged
@@ -59,13 +63,21 @@ class PDFTableExtractorBase:
         with pdfplumber.open(self.pdf_path) as pdf:
             if pdf.pages:
                 end_page = self.end_page if self.end_page is not None else len(pdf.pages)
-                for i in range(self.start_page - 1, min(end_page, len(pdf.pages))):
-                    page = pdf.pages[i]
-                    table = page.extract_table(self.index_settings)
-                    if table is not None:
-                        for row in table:
-                            if any(row):
-                                csv_file.append(row)
+                total_pages = min(end_page, len(pdf.pages)) - (self.start_page - 1)
+
+                with progress_manager.pdf_processing_progress(
+                    total_pages=total_pages,
+                    table_format=table_format,
+                    description=f"Extracting {table_format.replace('_', ' ')} table"
+                ) as progress_ctx:
+                    for i in range(self.start_page - 1, min(end_page, len(pdf.pages))):
+                        page = pdf.pages[i]
+                        table = page.extract_table(self.index_settings)
+                        if table is not None:
+                            for row in table:
+                                if any(row):
+                                    csv_file.append(row)
+                        progress_ctx.advance(1)
         return self.merge_headers(csv_file)
 
     def extract_table_from_page(self, page_num: int) -> Optional[List[List[Any]]]:
@@ -155,7 +167,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
             "snap_y_tolerance": 7,
             "intersection_x_tolerance": 15,
         }
-        table_rows = self._extract_with_settings(start_page, end_page, provinsi_index_settings)
+        table_rows = self._extract_with_settings(start_page, end_page, provinsi_index_settings, table_format="provinsi_index")
 
         # Convert table rows to ProvinceIndexData objects
         province_data = []
@@ -212,7 +224,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         }
         return self._extract_with_settings(start_page, end_page, provinsi_summary_settings)
 
-    def _extract_with_settings(self, start_page: int, end_page: int, settings: dict) -> List[List[Any]]:
+    def _extract_with_settings(self, start_page: int, end_page: int, settings: dict, table_format: str = "unknown") -> List[List[Any]]:
         """
         Extract tables with specific settings.
 
@@ -220,6 +232,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
             start_page: Starting page number (1-based)
             end_page: Ending page number (1-based, inclusive)
             settings: Table extraction settings
+            table_format: Format of the table being extracted
 
         Returns:
             List of table rows
@@ -235,7 +248,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         self.index_settings = settings
 
         try:
-            tables = self.extract_tables()
+            tables = self.extract_tables(table_format=table_format)
             return tables
         finally:
             # Restore original page range and settings
