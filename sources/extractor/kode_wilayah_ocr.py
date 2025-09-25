@@ -18,6 +18,7 @@ from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
 from utils.converter import convert_cyrillic_to_latin
+from utils.normalize import kode_wilayah
 from utils.paths import (
     get_csv_output_path,
     get_datas_dir,
@@ -99,10 +100,10 @@ class KodeWilayahOCR:
         self._save_results(cleaned_records)
 
         # Step 6: Return structured data
-        table = TableKodeWilayah(records=[KodeWilayah(**r) for r in cleaned_records])
+        table = TableKodeWilayah(records=cleaned_records)
         return table
 
-    def _process_table_text(self, text: str) -> list[dict]:
+    def _process_table_text(self, text: str) -> list[KodeWilayah]:
         """
         Process raw OCR text and extract cleaned table records.
 
@@ -136,53 +137,29 @@ class KodeWilayahOCR:
         cleaned_records = []
 
         for record in df.to_dicts():
-            # Clean up OCR text: convert Cyrillic look-alike characters to Latin equivalents
-            processed_record = {}
-            for col_name, value in record.items():
-                if isinstance(value, str) and re.search(r"[\u0400-\u04FF]", value):
-                    processed_record[col_name] = convert_cyrillic_to_latin(value)
-                else:
-                    processed_record[col_name] = value
-
-            # Clean the 'No' field specifically for number extraction
-            no_clean = processed_record[no_col]
-            no_str = re.sub(r"\D", "", no_clean)
-            if not no_str:
-                continue  # Skip invalid records
-
-            no = int(no_str)
-
-            cleaned_records.append(
-                {
-                    "no": no,
-                    "provinsi": processed_record[prov_col].strip().replace("<br>", " "),
-                    "kabupaten_kota": processed_record[kab_col]
-                    .strip()
-                    .replace("<br>", " "),
-                    "nama_kota": processed_record[nama_col]
-                    .strip()
-                    .replace("<br>", " "),
-                    "singkatan_nama_kota": processed_record[singk_col]
-                    .strip()
-                    .replace("<br>", " ")
-                    .upper(),
-                    "parent_subdivision": processed_record[parent_col]
-                    .strip()
-                    .replace("<br>", " ")
-                    .upper(),
-                }
-            )
+            # Map column names to expected keys
+            record_mapped = {
+                'no': record[no_col],
+                'provinsi': record[prov_col],
+                'kabupaten_kota': record[kab_col],
+                'nama_kota': record[nama_col],
+                'singkatan_nama_kota': record[singk_col],
+                'parent_subdivision': record[parent_col],
+            }
+            kode_wilayah_obj = kode_wilayah(record_mapped)
+            if kode_wilayah_obj:
+                cleaned_records.append(kode_wilayah_obj)
 
         return cleaned_records
 
-    def _save_results(self, records: list[dict]) -> None:
+    def _save_results(self, records: list[KodeWilayah]) -> None:
         """
         Save extracted data in multiple formats.
 
         Args:
             records: List of cleaned record dictionaries
         """
-        df_clean = pl.DataFrame(records)
+        df_clean = pl.DataFrame([r.model_dump() for r in records])
 
         # Save as Parquet
         df_clean.write_parquet(get_parquet_output_path("kode_wilayah.parquet"))
@@ -191,11 +168,7 @@ class KodeWilayahOCR:
         df_clean.write_csv(get_csv_output_path("kode_wilayah.csv"))
 
         # Save as JSON
-        table = TableKodeWilayah(records=[KodeWilayah(**r) for r in records])
-        with open(
-            get_json_output_path("kode_wilayah.json"), "w", encoding="utf-8"
-        ) as f:
-            f.write(table.model_dump_json())
+        df_clean.write_json(get_json_output_path("kode_wilayah.json"))
 
         print("Kode wilayah data saved successfully in parquet, csv, and json formats.")
 
