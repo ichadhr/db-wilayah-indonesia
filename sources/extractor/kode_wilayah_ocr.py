@@ -7,7 +7,6 @@ to extract structured table data.
 """
 
 import os
-import re
 from io import StringIO
 
 import polars as pl
@@ -17,7 +16,6 @@ from marker.converters.table import TableConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
-from utils.converter import convert_cyrillic_to_latin
 from utils.normalize import kode_wilayah
 from utils.paths import (
     get_csv_output_path,
@@ -139,12 +137,12 @@ class KodeWilayahOCR:
         for record in df.to_dicts():
             # Map column names to expected keys
             record_mapped = {
-                'no': record[no_col],
-                'provinsi': record[prov_col],
-                'kabupaten_kota': record[kab_col],
-                'nama_kota': record[nama_col],
-                'singkatan_nama_kota': record[singk_col],
-                'parent_subdivision': record[parent_col],
+                "no": record[no_col],
+                "provinsi": record[prov_col],
+                "kabupaten_kota": record[kab_col],
+                "nama_kota": record[nama_col],
+                "singkatan_nama_kota": record[singk_col],
+                "parent_subdivision": record[parent_col],
             }
             kode_wilayah_obj = kode_wilayah(record_mapped)
             if kode_wilayah_obj:

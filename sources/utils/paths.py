@@ -55,6 +55,10 @@ def ensure_output_dirs() -> None:
         full_path = os.path.join(output_dir, subdir)
         os.makedirs(full_path, exist_ok=True)
 
+    # Create debug subdirectory under json
+    debug_dir = os.path.join(get_output_subdir("json"), "debug")
+    os.makedirs(debug_dir, exist_ok=True)
+
 
 # Convenience functions for common paths
 def get_pdf_path(filename: str) -> str:
@@ -140,3 +144,16 @@ def get_image_output_path(filename: str, ensure_dir: bool = False) -> str:
     if ensure_dir:
         ensure_file_directory(path)
     return path
+
+
+def sanitize_filename(name: str) -> str:
+    """
+    Sanitize a name for use as a filename.
+
+    Args:
+        name: Original name string
+
+    Returns:
+        Sanitized filename (lowercase, spaces and slashes replaced with underscores)
+    """
+    return name.lower().replace(" ", "_").replace("/", "_")

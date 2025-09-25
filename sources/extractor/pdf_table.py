@@ -1,6 +1,7 @@
 import os
 from typing import List, Any, Optional
 import pdfplumber
+import polars as pl
 from IPython.display import display
 from models.pdf_table import ProvinceIndexData
 from utils.converter import *
@@ -40,7 +41,11 @@ class PDFTableExtractorBase:
         """
         with pdfplumber.open(self.pdf_path) as pdf:
             absolute_page_num = self.start_page + page_num - 1
-            if pdf.pages and absolute_page_num < len(pdf.pages) and (self.end_page is None or absolute_page_num <= self.end_page - 1):
+            if (
+                pdf.pages
+                and absolute_page_num < len(pdf.pages)
+                and (self.end_page is None or absolute_page_num <= self.end_page - 1)
+            ):
                 page = pdf.pages[absolute_page_num]
                 print(f"\nDebugging table finder for page {absolute_page_num + 1}:")
                 im = page.to_image()
@@ -65,18 +70,21 @@ class PDFTableExtractorBase:
                 end_page = self.end_page if self.end_page is not None else len(pdf.pages)
                 total_pages = min(end_page, len(pdf.pages)) - (self.start_page - 1)
 
-                with progress_manager.pdf_processing_progress(
+                with progress_manager.table_extraction_progress(
                     total_pages=total_pages,
                     table_format=table_format,
-                    description=f"Extracting {table_format.replace('_', ' ')} table"
+                    description=f"Extracting {table_format.replace('_', ' ')} table",
                 ) as progress_ctx:
                     for i in range(self.start_page - 1, min(end_page, len(pdf.pages))):
                         page = pdf.pages[i]
                         table = page.extract_table(self.index_settings)
                         if table is not None:
+                            page_records = 0
                             for row in table:
                                 if any(row):
                                     csv_file.append(row)
+                                    page_records += 1
+                            progress_ctx.update_records(page_records)
                         progress_ctx.advance(1)
         return self.merge_headers(csv_file)
 
@@ -92,7 +100,11 @@ class PDFTableExtractorBase:
         """
         with pdfplumber.open(self.pdf_path) as pdf:
             absolute_page_num = self.start_page + page_num - 1
-            if pdf.pages and absolute_page_num < len(pdf.pages) and (self.end_page is None or absolute_page_num <= self.end_page - 1):
+            if (
+                pdf.pages
+                and absolute_page_num < len(pdf.pages)
+                and (self.end_page is None or absolute_page_num <= self.end_page - 1)
+            ):
                 page = pdf.pages[absolute_page_num]
                 return page.extract_table(self.index_settings)
         return None
@@ -132,8 +144,10 @@ class PDFTableExtractorBase:
         # Process remaining rows, skipping duplicate headers
         i = header_size
         while i < len(merged_rows):
-            if (i + header_size <= len(merged_rows) and
-                merged_rows[i:i+header_size] == header_block):
+            if (
+                i + header_size <= len(merged_rows)
+                and merged_rows[i : i + header_size] == header_block
+            ):
                 i += header_size  # Skip duplicate header block
             else:
                 cleaned_rows.append(merged_rows[i])
@@ -146,7 +160,8 @@ class PDFTableExtractor(PDFTableExtractorBase):
     """
     Child class of PDFTableExtractor with specific methods for extracting province-related tables.
     """
-    def provinsi_index(self, start_page: int, end_page: int) -> List[ProvinceIndexData]:
+
+    def provinsi_index(self, start_page: int, end_page: int) -> pl.DataFrame:
         """
         Extract province index table.
 
@@ -155,11 +170,8 @@ class PDFTableExtractor(PDFTableExtractorBase):
             end_page: Ending page number (1-based, inclusive)
 
         Returns:
-            List of ProvinceIndexData objects for province index data
+            Polars DataFrame with province index data
         """
-        if end_page is None:
-            raise ValueError("end_page must be specified for provinsi_index extraction")
-
         # Use specific settings for province index tables
         provinsi_index_settings = {
             "vertical_strategy": "lines",
@@ -167,7 +179,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
             "snap_y_tolerance": 7,
             "intersection_x_tolerance": 15,
         }
-        table_rows = self._extract_with_settings(start_page, end_page, provinsi_index_settings, table_format="provinsi_index")
+        table_rows = self._extract_with_settings(
+            start_page, end_page, provinsi_index_settings, table_format="provinsi_index"
+        )
 
         # Convert table rows to ProvinceIndexData objects
         province_data = []
@@ -199,8 +213,8 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 except (ValueError, IndexError) as e:
                     raise ValueError(f"Failed to parse table row {row}: {e}")
 
-        return province_data
-    
+        return pl.DataFrame([data.model_dump() for data in province_data])
+
     def provinsi_summary(self, start_page: int, end_page: int) -> List[List[Any]]:
         """
         Extract province summary table.
@@ -212,9 +226,6 @@ class PDFTableExtractor(PDFTableExtractorBase):
         Returns:
             List of table rows for province data
         """
-        if end_page is None:
-            raise ValueError("end_page must be specified for provinsi_summary extraction")
-
         # Use specific settings for province summary tables
         provinsi_summary_settings = {
             "vertical_strategy": "lines",
@@ -222,9 +233,17 @@ class PDFTableExtractor(PDFTableExtractorBase):
             "snap_y_tolerance": 5,
             "intersection_x_tolerance": 10,
         }
-        return self._extract_with_settings(start_page, end_page, provinsi_summary_settings)
+        return self._extract_with_settings(
+            start_page, end_page, provinsi_summary_settings
+        )
 
-    def _extract_with_settings(self, start_page: int, end_page: int, settings: dict, table_format: str = "unknown") -> List[List[Any]]:
+    def _extract_with_settings(
+        self,
+        start_page: int,
+        end_page: int,
+        settings: dict,
+        table_format: str = "unknown",
+    ) -> List[List[Any]]:
         """
         Extract tables with specific settings.
 
@@ -237,8 +256,6 @@ class PDFTableExtractor(PDFTableExtractorBase):
         Returns:
             List of table rows
         """
-        if end_page is None:
-            raise ValueError("end_page must be specified for table extraction")
         # Temporarily set page range and settings
         original_start = self.start_page
         original_end = self.end_page
@@ -266,7 +283,7 @@ if __name__ == "__main__":
     pdf_path = os.path.join(input_dir, file_name)
 
     # Use PDFTableExtractor
-    table_extractor = PDFTableExtractor(pdf_path)
+    table_extractor = PDFTableExtractor(pdf_path, start_page=1, end_page=5)
 
     # Extract province index data
     provinsi_index = table_extractor.provinsi_index(start_page=16, end_page=17)

@@ -21,7 +21,7 @@ class ProgressManager:
     def pdf_processing_progress(
         self,
         total_pages: int,
-        table_format: str = "provinsi_index",
+        table_format: str = "structuring",
         description: str = "Processing PDF",
     ):
         """Context manager for PDF processing with table-format-specific descriptions."""
@@ -40,6 +40,31 @@ class ProgressManager:
         )
 
         progress_context = PDFProgressContext(progress_bar, total_pages)
+        try:
+            yield progress_context
+        finally:
+            progress_bar.close()
+
+    @contextmanager
+    def table_extraction_progress(
+        self,
+        total_pages: int,
+        table_format: str = "unknown",
+        description: str = "Extracting table",
+    ):
+        """Context manager for table extraction progress tracking."""
+        # Create tqdm progress bar for table extraction
+        progress_bar = tqdm(
+            total=total_pages,
+            desc=description,
+            unit="page",
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}{postfix}]",
+        )
+
+        # Set initial postfix
+        progress_bar.set_postfix_str(f"0 Pages, 0 Records")
+
+        progress_context = TableExtractionProgressContext(progress_bar, total_pages)
         try:
             yield progress_context
         finally:
@@ -118,6 +143,39 @@ class DownloadProgressContext:
         # Update postfix with current rate
         rate = self.progress_bar.format_dict.get("rate", 0) or 0
         self.progress_bar.set_postfix_str(f"{rate:.0f} items/s")
+
+
+class TableExtractionProgressContext:
+    """Context for table extraction progress tracking."""
+
+    def __init__(self, progress_bar: tqdm, total_pages: int):
+        self.progress_bar = progress_bar
+        self.total_pages = total_pages
+        self.stats = {
+            "pages_processed": 0,
+            "records_extracted": 0,
+        }
+
+    def update_records(self, records: int):
+        """Update the number of records extracted."""
+        self.stats["records_extracted"] += records
+        self._update_postfix()
+
+    def advance(self, pages: int = 1):
+        """Advance progress by specified number of pages."""
+        self.stats["pages_processed"] += pages
+        self.progress_bar.update(pages)
+        self._update_postfix()
+
+    def get_total_records(self) -> int:
+        """Get the total number of records extracted."""
+        return self.stats["records_extracted"]
+
+    def _update_postfix(self):
+        """Update the progress bar postfix with current statistics."""
+        pages = self.stats["pages_processed"]
+        records = self.stats["records_extracted"]
+        self.progress_bar.set_postfix_str(f"{pages} Pages, {records} Records")
 
 
 # Global instance for easy access
