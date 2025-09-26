@@ -91,6 +91,28 @@ class ProgressManager:
         finally:
             progress_bar.close()
 
+    @contextmanager
+    def batch_processing_progress(
+        self,
+        total_items: int,
+        item_name: str = "items",
+        description: str = "Processing batch",
+    ):
+        """Context manager for batch processing operations."""
+        # Create tqdm progress bar for batch processing
+        progress_bar = tqdm(
+            total=total_items,
+            desc=description,
+            unit=item_name,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}]",
+        )
+
+        progress_context = BatchProgressContext(progress_bar, total_items)
+        try:
+            yield progress_context
+        finally:
+            progress_bar.close()
+
 
 class PDFProgressContext:
     """Context for PDF processing progress tracking."""
@@ -176,6 +198,18 @@ class TableExtractionProgressContext:
         pages = self.stats["pages_processed"]
         records = self.stats["records_extracted"]
         self.progress_bar.set_postfix_str(f"{pages} Pages, {records} Records")
+
+
+class BatchProgressContext:
+    """Context for batch processing progress tracking."""
+
+    def __init__(self, progress_bar: tqdm, total_items: int):
+        self.progress_bar = progress_bar
+        self.total_items = total_items
+
+    def advance(self, items: int = 1):
+        """Advance progress by specified number of items."""
+        self.progress_bar.update(items)
 
 
 # Global instance for easy access

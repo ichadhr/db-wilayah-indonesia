@@ -1,9 +1,9 @@
 import os
-from typing import List, Any, Optional
+from typing import Any, List, Optional
+
 import pdfplumber
 import polars as pl
-from IPython.display import display
-from models.pdf_table import ProvinceIndexData
+from models.pdf_table import DistrictCityIndexData, ProvinceIndexData
 from utils.converter import *
 from utils.progress import progress_manager
 
@@ -13,7 +13,9 @@ class PDFTableExtractorBase:
     Base class to extract tables from PDF files using pdfplumber.
     """
 
-    def __init__(self, pdf_path: str, start_page: int = 1, end_page: Optional[int] = None):
+    def __init__(
+        self, pdf_path: str, start_page: int = 1, end_page: Optional[int] = None
+    ):
         """
         Initialize the PDF Table Extractor.
 
@@ -27,34 +29,12 @@ class PDFTableExtractorBase:
         self.end_page = end_page
         self.index_settings = {
             "vertical_strategy": "lines",
-            "horizontal_strategy": "text",
-            "snap_y_tolerance": 7,
-            "intersection_x_tolerance": 15,
+            "horizontal_strategy": "lines",
         }
 
-    def debug_table_finder(self, page_num: int = 1) -> None:
-        """
-        Debug the table finder for a specific page.
-
-        Args:
-            page_num: Page number to debug (1-based, relative to start_page)
-        """
-        with pdfplumber.open(self.pdf_path) as pdf:
-            absolute_page_num = self.start_page + page_num - 1
-            if (
-                pdf.pages
-                and absolute_page_num < len(pdf.pages)
-                and (self.end_page is None or absolute_page_num <= self.end_page - 1)
-            ):
-                page = pdf.pages[absolute_page_num]
-                print(f"\nDebugging table finder for page {absolute_page_num + 1}:")
-                im = page.to_image()
-                debug_im = im.debug_tablefinder()
-                display(debug_im)
-                debug_im_settings = im.debug_tablefinder(self.index_settings)
-                display(debug_im_settings)
-
-    def extract_tables(self, table_format: str = "unknown") -> List[List[Any]]:
+    def extract_tables(
+        self, table_format: str = "unknown", show_progress: bool = True
+    ) -> List[List[Any]]:
         """
         Extract tables from the specified page range of the PDF.
 
@@ -64,29 +44,43 @@ class PDFTableExtractorBase:
         Returns:
             List of table rows with duplicate headers merged
         """
-        csv_file = []
+        records = []
         with pdfplumber.open(self.pdf_path) as pdf:
             if pdf.pages:
-                end_page = self.end_page if self.end_page is not None else len(pdf.pages)
+                end_page = (
+                    self.end_page if self.end_page is not None else len(pdf.pages)
+                )
                 total_pages = min(end_page, len(pdf.pages)) - (self.start_page - 1)
 
-                with progress_manager.table_extraction_progress(
-                    total_pages=total_pages,
-                    table_format=table_format,
-                    description=f"Extracting {table_format.replace('_', ' ')} table",
-                ) as progress_ctx:
+                if show_progress:
+                    with progress_manager.table_extraction_progress(
+                        total_pages=total_pages,
+                        table_format=table_format,
+                        description=f"Extracting {table_format.replace('_', ' ')} table",
+                    ) as progress_ctx:
+                        for i in range(
+                            self.start_page - 1, min(end_page, len(pdf.pages))
+                        ):
+                            page = pdf.pages[i]
+                            table = page.extract_table(self.index_settings)
+                            if table is not None:
+                                page_records = 0
+                                for row in table:
+                                    if any(row):
+                                        records.append(row)
+                                        page_records += 1
+                                progress_ctx.update_records(page_records)
+                            progress_ctx.advance(1)
+                else:
+                    # Extract without progress display
                     for i in range(self.start_page - 1, min(end_page, len(pdf.pages))):
                         page = pdf.pages[i]
                         table = page.extract_table(self.index_settings)
                         if table is not None:
-                            page_records = 0
                             for row in table:
                                 if any(row):
-                                    csv_file.append(row)
-                                    page_records += 1
-                            progress_ctx.update_records(page_records)
-                        progress_ctx.advance(1)
-        return self.merge_headers(csv_file)
+                                    records.append(row)
+        return self.merge_headers(records)
 
     def extract_table_from_page(self, page_num: int) -> Optional[List[List[Any]]]:
         """
@@ -184,7 +178,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         )
 
         # Convert table rows to ProvinceIndexData objects
-        province_data = []
+        province_index_data = []
         for row in table_rows:
             if len(row) >= 11:  # Ensure row has enough columns
                 # Skip header/summary rows
@@ -205,37 +199,147 @@ class PDFTableExtractor(PDFTableExtractorBase):
                         jumlah_kecamatan=row[5],
                         jumlah_kelurahan=row[6],
                         jumlah_desa=row[7],
-                        luas_wilayah=row[8],
+                        luas_wilayah_km2=row[8],
                         jumlah_penduduk=row[9],
                         jumlah_pulau=row[10],
                     )
-                    province_data.append(data)
+                    province_index_data.append(data)
                 except (ValueError, IndexError) as e:
                     raise ValueError(f"Failed to parse table row {row}: {e}")
 
-        return pl.DataFrame([data.model_dump() for data in province_data])
+        return pl.DataFrame([data.model_dump() for data in province_index_data])
 
-    def provinsi_summary(self, start_page: int, end_page: int) -> List[List[Any]]:
+    def kabupaten_kota_index(
+        self, start_page: int, end_page: int, show_progress: bool = True
+    ) -> pl.DataFrame:
         """
-        Extract province summary table.
+        Extract district/city index table.
 
         Args:
             start_page: Starting page number (1-based)
             end_page: Ending page number (1-based, inclusive)
 
         Returns:
-            List of table rows for province data
+            Polars DataFrame with province district/city data
         """
-        # Use specific settings for province summary tables
-        provinsi_summary_settings = {
+        # Use specific settings for district/city index tables
+        kabupaten_kota_index_settings = {
+            "vertical_strategy": "lines",
+            "horizontal_strategy": "text",
+            "snap_y_tolerance": 7,
+            "intersection_x_tolerance": 300,
+        }
+        table_rows = self._extract_with_settings(
+            start_page,
+            end_page,
+            kabupaten_kota_index_settings,
+            table_format="kabupaten_kota_index",
+            show_progress=show_progress,
+        )
+
+        # Convert table rows to DistrictCityIndexData objects
+        district_city_data = []
+        i = 0
+        while i < len(table_rows):
+            row = table_rows[i]
+            if len(row) >= 9 and None not in row:
+                first_cell = str(row[0]).strip() if row[0] else ""
+                if first_cell and first_cell.isdigit():
+                    # Start of data row
+                    keterangan = str(row[8]) if row[8] else ""
+                    i += 1
+                    # Merge continuation rows
+                    while i < len(table_rows):
+                        next_row = table_rows[i]
+                        if (
+                            len(next_row) >= 9
+                            and None not in next_row
+                            and str(next_row[0]).strip() == ""
+                            and all(str(cell).strip() == "" for cell in next_row[:8])
+                        ):
+                            keterangan += " " + str(next_row[8]) if next_row[8] else ""
+                            i += 1
+                        else:
+                            break
+                    # Create data with full keterangan
+                    try:
+                        data = DistrictCityIndexData(
+                            no=row[0],
+                            kode=row[1],
+                            kabupaten_kota=row[2],
+                            jumlah_kecamatan=row[3],
+                            jumlah_kelurahan=row[4],
+                            jumlah_desa=row[5],
+                            luas_wilayah_km2=row[6],
+                            jumlah_penduduk=row[7],
+                            keterangan=keterangan,
+                        )
+                        district_city_data.append(data)
+                    except (ValueError, IndexError) as e:
+                        raise ValueError(f"Failed to parse table row {row}: {e}")
+                else:
+                    i += 1
+            else:
+                i += 1
+
+        return pl.DataFrame([data.model_dump() for data in district_city_data])
+
+    def details(self, start_page: int, end_page: int) -> pl.DataFrame:
+        """
+        Extract district/city index table.
+
+        Args:
+            start_page: Starting page number (1-based)
+            end_page: Ending page number (1-based, inclusive)
+
+        Returns:
+            Polars DataFrame with province district/city data
+        """
+        # Use specific settings for district/city index tables
+        kabupaten_kota_index_settings = {
             "vertical_strategy": "lines",
             "horizontal_strategy": "lines",
             "snap_y_tolerance": 5,
             "intersection_x_tolerance": 10,
         }
-        return self._extract_with_settings(
-            start_page, end_page, provinsi_summary_settings
+        table_rows = self._extract_with_settings(
+            start_page,
+            end_page,
+            kabupaten_kota_index_settings,
+            table_format="kabupaten_kota_index",
         )
+
+        # Convert table rows to DistrictCityIndexData objects
+        district_city_data = []
+        for row in table_rows:
+            print(f"Processing row: {row}")
+            print(f"Row types: {[type(cell) for cell in row]}")
+
+            if len(row) >= 9:
+                # Skip header
+                first_cell = str(row[0]).strip() if row[0] else ""
+
+                # Skip if first column is not numeric
+                if not (first_cell and first_cell.isdigit()):
+                    continue  # Skip header
+
+                try:
+                    data = DistrictCityIndexData(
+                        no=row[0],
+                        kode=row[1],
+                        kabupaten_kota=row[2],
+                        jumlah_kecamatan=row[3],
+                        jumlah_kelurahan=row[4],
+                        jumlah_desa=row[5],
+                        luas_wilayah_km2=row[6],
+                        jumlah_penduduk=row[7],
+                        keterangan=row[8],
+                    )
+                    district_city_data.append(data)
+                except (ValueError, IndexError) as e:
+                    raise ValueError(f"Failed to parse table row {row}: {e}")
+
+        return pl.DataFrame([data.model_dump() for data in district_city_data])
 
     def _extract_with_settings(
         self,
@@ -243,6 +347,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         end_page: int,
         settings: dict,
         table_format: str = "unknown",
+        show_progress: bool = True,
     ) -> List[List[Any]]:
         """
         Extract tables with specific settings.
@@ -265,7 +370,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
         self.index_settings = settings
 
         try:
-            tables = self.extract_tables(table_format=table_format)
+            tables = self.extract_tables(
+                table_format=table_format, show_progress=show_progress
+            )
             return tables
         finally:
             # Restore original page range and settings
@@ -290,5 +397,5 @@ if __name__ == "__main__":
     print(f"Extracted {len(provinsi_index)} rows for provinsi_index")
 
     # Extract province data
-    provinsi = table_extractor.provinsi_summary(start_page=1, end_page=5)
+    provinsi = table_extractor.kabupaten_kota_index(start_page=1, end_page=5)
     print(f"Extracted {len(provinsi)} rows for provinsi")

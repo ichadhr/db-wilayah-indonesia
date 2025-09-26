@@ -1,10 +1,12 @@
-import warnings
 import re
-from typing import List, Optional, Any
-from pypdf import PdfReader
-from utils.progress import progress_manager
-from utils.paths import get_json_output_path
+import warnings
+from typing import Any, List, Optional
+
 from models.pdf_structure import *
+from pypdf import PdfReader
+from utils.paths import get_json_output_path
+from utils.progress import progress_manager
+
 
 class PDFStructureExtractor:
     # Constants
@@ -24,7 +26,7 @@ class PDFStructureExtractor:
     def __init__(self, pdf_path: str):
         """
         Initialize the PDF Structure Extractor.
-        
+
         Args:
             pdf_path: Path to the PDF file to extract structure from
         """
@@ -37,10 +39,10 @@ class PDFStructureExtractor:
         self.province_data: dict[str, int] = {}  # Use dict for faster lookups
         self.end_section_page: Optional[int] = None
         self.document_index_page: Optional[int] = None
-        
+
         # Track processed provinces to ensure no duplicates
         self.processed_provinces = set()
-        
+
         # Track detail codes to prevent duplicates within a province
         self.current_detail_codes = set()
 
@@ -58,7 +60,7 @@ class PDFStructureExtractor:
         with progress_manager.pdf_processing_progress(
             total_pages=len(self.reader.pages),
             table_format="structure_analysis",
-            description="Structuring PDF pages"
+            description="Structuring PDF pages",
         ) as progress_ctx:
             for page_num, page in enumerate(self.reader.pages):
                 try:
@@ -66,7 +68,9 @@ class PDFStructureExtractor:
                     # Update progress statistics
                     progress_ctx.update_stats(
                         provinces_found=len(self.administrative_structure),
-                        kabupaten_kota_count=sum(len(p.details) for p in self.administrative_structure)
+                        kabupaten_kota_count=sum(
+                            len(p.details) for p in self.administrative_structure
+                        ),
                     )
                     progress_ctx.advance(1)
                 except Exception as e:
@@ -79,7 +83,7 @@ class PDFStructureExtractor:
     def _process_single_page(self, page, page_num: int) -> None:
         """
         Process a single page and update the administrative structure.
-        
+
         Args:
             page: PDF page object
             page_num: Zero-based page number
@@ -91,7 +95,9 @@ class PDFStructureExtractor:
 
         # Check for overall document index page
         if re.search(re.escape(self.PROVINSI_PAGE), text, re.IGNORECASE):
-            if self.document_index_page is None:  # Only set once for the first occurrence
+            if (
+                self.document_index_page is None
+            ):  # Only set once for the first occurrence
                 self.document_index_page = page_num
             return
 
@@ -101,22 +107,19 @@ class PDFStructureExtractor:
             match = self.PROVINCE_NAME_PATTERN.search(text)
             if match:
                 province_name = match.group(1).strip()
-                
+
                 # Ensure we don't process the same province twice
                 if province_name not in self.processed_provinces:
                     self.processed_provinces.add(province_name)
                     self.province_data[province_name] = page_num
-                    
+
                     # Reset detail codes tracker for new province
                     self.current_detail_codes = set()
 
                     # Start building province entry
                     self.current_province = Province(
                         name=province_name,
-                        page_range=PageRange(
-                            start=page_num + 1,
-                            end=None
-                        ),
+                        page_range=PageRange(start=page_num + 1, end=None),
                         sections=ProvinceSections(
                             kabupaten_kota_index=Section(
                                 type="B_kabupaten_kota_index",
@@ -151,17 +154,23 @@ class PDFStructureExtractor:
             # Update kabupaten_kota_index end based on kecamatan_index_page location
             # Logic: If kabupaten_kota_index start equals kecamatan page + 1 (same page), end = kecamatan page + 1
             # Otherwise, end = kecamatan page
-            kabupaten_kota_index_start = self.current_province.sections.kabupaten_kota_index.page_range.start
+            kabupaten_kota_index_start = (
+                self.current_province.sections.kabupaten_kota_index.page_range.start
+            )
             if kabupaten_kota_index_start == page_num + 1:
                 kabupaten_kota_index_end = page_num + 1
             else:
                 kabupaten_kota_index_end = page_num
 
-            self.current_province.sections.kabupaten_kota_index.page_range.end = kabupaten_kota_index_end
+            self.current_province.sections.kabupaten_kota_index.page_range.end = (
+                kabupaten_kota_index_end
+            )
 
             # Update kecamatan_index start to be right after kabupaten_kota_index end
             kecamatan_index_start = kabupaten_kota_index_end + 1
-            self.current_province.sections.kecamatan_index.page_range.start = kecamatan_index_start
+            self.current_province.sections.kecamatan_index.page_range.start = (
+                kecamatan_index_start
+            )
             return
 
         # Check for end section - set to last occurrence
@@ -171,7 +180,9 @@ class PDFStructureExtractor:
 
         # Check for C.*.1) patterns and process details on pages within kecamatan_index range
         if self.current_province:
-            kecamatan_index_start = self.current_province.sections.kecamatan_index.page_range.start
+            kecamatan_index_start = (
+                self.current_province.sections.kecamatan_index.page_range.start
+            )
             if kecamatan_index_start is not None and page_num >= kecamatan_index_start:
                 # Check for C.*.1) patterns to update kecamatan_index end
                 kecamatan_index_patterns = self.CODE_PATTERN.findall(text)
@@ -180,7 +191,9 @@ class PDFStructureExtractor:
                         kecamatan_index_end = page_num + 1
                     else:
                         kecamatan_index_end = page_num
-                    self.current_province.sections.kecamatan_index.page_range.end = kecamatan_index_end
+                    self.current_province.sections.kecamatan_index.page_range.end = (
+                        kecamatan_index_end
+                    )
 
                 # Process all detail matches (including .2, .3, etc.)
                 detail_matches = self.DETAIL_PATTERN.findall(text)
@@ -226,7 +239,7 @@ class PDFStructureExtractor:
     def _finalize_structure(self) -> AdministrativeStructure:
         """
         Finalize the administrative structure and return the result.
-        
+
         Returns:
             dict: Finalized administrative structure with consistent format
         """
@@ -275,22 +288,32 @@ class PDFStructureExtractor:
 
         # Sort details within each province by their id for consistency
         for province_info in self.administrative_structure:
-            province_info.details.sort(key=lambda x: int(x.id.split('.')[-1]))
+            province_info.details.sort(key=lambda x: int(x.id.split(".")[-1]))
 
         # Count totals by region_type for validation
         for province_info in self.administrative_structure:
-            province_info.total_kabupaten = sum(1 for detail in province_info.details if detail.region_type == "kabupaten")
-            province_info.total_kota = sum(1 for detail in province_info.details if detail.region_type == "kota")
+            province_info.total_kabupaten = sum(
+                1
+                for detail in province_info.details
+                if detail.region_type == "kabupaten"
+            )
+            province_info.total_kota = sum(
+                1 for detail in province_info.details if detail.region_type == "kota"
+            )
 
         # Wrap in parent structure
         parent_structure = AdministrativeStructure(
             name="Provinsi",
             page_range=PageRange(
-                start=self.document_index_page + 1 if self.document_index_page is not None else 1,
+                start=(
+                    self.document_index_page + 1
+                    if self.document_index_page is not None
+                    else 1
+                ),
                 end=parent_end,
             ),
             provinces=self.administrative_structure,
-            table_format="provinsi_index"
+            table_format="provinsi_index",
         )
 
         return parent_structure
@@ -298,60 +321,130 @@ class PDFStructureExtractor:
     def validate_structure(self) -> dict[str, Any]:
         """
         Validate the extracted structure for consistency.
-        
+
         Returns:
             dict: Validation report with any issues found
         """
         issues = []
-        
+
         if not self.administrative_structure:
             issues.append("No provinces found in structure")
             return {"valid": False, "issues": issues}
-        
+
         # Check for overlapping page ranges
         for i, province in enumerate(self.administrative_structure):
             # Check province page range validity (skip if end is None)
             province_end = province.page_range.end
-            if province_end is not None and province.page_range.start is not None and province.page_range.start >= province_end:
+            if (
+                province_end is not None
+                and province.page_range.start is not None
+                and province.page_range.start >= province_end
+            ):
                 issues.append(f"Province {province.name}: Invalid page range")
+
+            # Check page ranges are within document bounds
+            total_pages = len(self.reader.pages)
+            if province.page_range.start is not None and (
+                province.page_range.start < 0
+                or province.page_range.start >= total_pages
+            ):
+                issues.append(
+                    f"Province {province.name}: Start page {province.page_range.start} outside document bounds (0-{total_pages-1})"
+                )
+            if province_end is not None and (
+                province_end < 0 or province_end > total_pages
+            ):
+                issues.append(
+                    f"Province {province.name}: End page {province_end} outside document bounds (0-{total_pages})"
+                )
+
+            # Ensure provinces have required sections
+            if (
+                province.sections.kabupaten_kota_index.page_range.start is None
+                or province.sections.kecamatan_index.page_range.start is None
+            ):
+                issues.append(f"Province {province.name}: Missing required sections")
 
             # Check for overlapping with next province (skip if either end is None)
             if i < len(self.administrative_structure) - 1:
                 next_province = self.administrative_structure[i + 1]
                 next_start = next_province.page_range.start
-                if (province_end is not None and next_start is not None and
-                    province_end > next_start):
+                if (
+                    province_end is not None
+                    and next_start is not None
+                    and province_end > next_start
+                ):
                     issues.append(
                         f"Overlapping page ranges between {province.name} and {next_province.name}"
                     )
 
             # Check details within province
             # Sort details by page range for proper overlap detection
-            sorted_details = sorted(province.details, key=lambda x: x.page_range.start or 0)
+            sorted_details = sorted(
+                province.details, key=lambda x: x.page_range.start or 0
+            )
 
             for j, detail in enumerate(sorted_details):
                 # Check detail page range validity (skip if end is None)
                 detail_end = detail.page_range.end
-                if detail_end is not None and detail.page_range.start is not None and detail.page_range.start > detail_end:
+                if (
+                    detail_end is not None
+                    and detail.page_range.start is not None
+                    and detail.page_range.start > detail_end
+                ):
                     issues.append(
                         f"Province {province.name}, Detail {detail.id}: Invalid page range"
                     )
+
+                # Check detail page ranges within province bounds
+                if (
+                    detail.page_range.start is not None
+                    and province.page_range.start is not None
+                ):
+                    if detail.page_range.start < province.page_range.start:
+                        issues.append(
+                            f"Province {province.name}, Detail {detail.id}: Start page before province start"
+                        )
+                if detail_end is not None and province_end is not None:
+                    if detail_end > province_end:
+                        issues.append(
+                            f"Province {province.name}, Detail {detail.id}: End page after province end"
+                        )
 
                 # Check for overlapping details (skip if either end is None)
                 if j < len(sorted_details) - 1:
                     next_detail = sorted_details[j + 1]
                     next_start = next_detail.page_range.start
-                    if (detail_end is not None and next_start is not None and
-                        detail_end > next_start):
+                    if (
+                        detail_end is not None
+                        and next_start is not None
+                        and detail_end > next_start
+                    ):
                         issues.append(
                             f"Province {province.name}: Overlapping details {detail.id} and {next_detail.id}"
                         )
+
+            # Validate detail counts match totals
+            actual_kabupaten = sum(
+                1 for detail in province.details if detail.region_type == "kabupaten"
+            )
+            actual_kota = sum(
+                1 for detail in province.details if detail.region_type == "kota"
+            )
+            if actual_kabupaten != province.total_kabupaten:
+                issues.append(
+                    f"Province {province.name}: Kabupaten count mismatch (expected: {province.total_kabupaten}, actual: {actual_kabupaten})"
+                )
+            if actual_kota != province.total_kota:
+                issues.append(
+                    f"Province {province.name}: Kota count mismatch (expected: {province.total_kota}, actual: {actual_kota})"
+                )
 
         return {
             "valid": len(issues) == 0,
             "issues": issues,
             "province_count": len(self.administrative_structure),
-            "total_details": sum(len(p.details) for p in self.administrative_structure)
+            "total_details": sum(len(p.details) for p in self.administrative_structure),
         }
 
 
@@ -359,14 +452,14 @@ class PDFStructureExtractor:
 if __name__ == "__main__":
     # File
     pdf_path = "datas/Keputusan_Menteri_Dalam_Negeri_Nomor_300.2.2-2138_Tahun_2025.pdf"
-    
+
     try:
         extractor = PDFStructureExtractor(pdf_path)
         structure = extractor.extract_structure()
-        
+
         # Validate the structure
         validation = extractor.validate_structure()
-        
+
         if validation["valid"]:
             print(f"\nExtraction successful!")
             print(f"Found {validation['province_count']} provinces")
@@ -375,11 +468,14 @@ if __name__ == "__main__":
             print(f"\nExtraction completed with issues:")
             for issue in validation["issues"]:
                 print(f"  - {issue}")
-        
+
         # Optionally save to JSON for inspection
         import json
-        with open(get_json_output_path("structure_output.json"), "w", encoding="utf-8") as f:
+
+        with open(
+            get_json_output_path("structure_output.json"), "w", encoding="utf-8"
+        ) as f:
             json.dump(structure, f, ensure_ascii=False, indent=2)
-            
+
     except Exception as e:
         print(f"Error during extraction: {e}")

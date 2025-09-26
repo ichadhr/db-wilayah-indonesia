@@ -146,7 +146,7 @@ def get_image_output_path(filename: str, ensure_dir: bool = False) -> str:
     return path
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize_folder_file_name(name: str) -> str:
     """
     Sanitize a name for use as a filename.
 
