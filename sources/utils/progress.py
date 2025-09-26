@@ -114,6 +114,7 @@ class ProgressManager:
             progress_bar.close()
 
 
+
 class PDFProgressContext:
     """Context for PDF processing progress tracking."""
 
@@ -210,6 +211,8 @@ class BatchProgressContext:
     def advance(self, items: int = 1):
         """Advance progress by specified number of items."""
         self.progress_bar.update(items)
+
+
 
 
 # Global instance for easy access

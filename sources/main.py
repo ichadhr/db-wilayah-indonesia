@@ -1,52 +1,53 @@
 import json
 import logging
+import multiprocessing as mp
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from logging.handlers import QueueHandler
 from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from extractor.pdf_structure import PDFStructureExtractor
 from extractor.pdf_table import PDFTableExtractor
-from utils.paths import (
-    ensure_output_dirs,
-    get_csv_output_path,
-    get_json_output_path,
-    get_parquet_output_path,
-    get_pdf_path,
-    sanitize_folder_file_name,
-)
+from utils.paths import (ensure_output_dirs, get_csv_output_path,
+                         get_json_output_path, get_parquet_output_path,
+                         get_pdf_path, sanitize_folder_file_name)
 from utils.progress import progress_manager
-from utils.structure_utils import (
-    kabupaten_kota_detail_struct,
-    kabupaten_kota_index_struct,
-    kecamatan_index_struct,
-    provinsi_index_struct,
-)
+from utils.structure_utils import (kabupaten_kota_detail_struct,
+                                   kabupaten_kota_index_struct,
+                                   kecamatan_index_struct,
+                                   provinsi_index_struct)
 
 # Constants
 DEBUG_JSON_FOLDER = "debug"
-BATCH_SIZE = 38  # Number of provinces per batch
-MAX_WORKERS = 8  # Concurrent workers (set to 1 for sequential processing)
+BATCH_SIZE = 38  # Number of provinces per batch (all in one batch)
+MAX_WORKERS = 4  # Concurrent threads (memory efficient with shared memory)
 PROVINCE_FILTER = ["Aceh", "Sumatera Utara"]  # Specific provinces to process [Optional]
 
-# Setup logging
+# Setup logging (will be configured in main())
 from datetime import datetime
-
-log_filename = datetime.now().strftime('extraction-%Y%m%d-%H%M%S.log')
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_filename)
-        # Removed StreamHandler to avoid console clutter during progress bars
-    ]
-)
 logger = logging.getLogger(__name__)
 
 
 def main():
+    # Setup logging for multiprocessing (simplified approach)
+    log_filename = datetime.now().strftime("extraction-%Y%m%d-%H%M%S.log")
+
+    # Configure logging with file handler
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(log_filename)
+        ],
+        force=True  # Override any existing configuration
+    )
+
+    # Ensure multiprocessing logger doesn't interfere
+    mp_logger = mp.get_logger()
+    mp_logger.setLevel(logging.WARNING)
+
     # init dotenv
     load_dotenv()
 
@@ -253,6 +254,11 @@ def extract_table_kabupaten_kota_index_batch(
         log_filename: Optional log filename for summary display
     """
     try:
+        # Pre-load structure data to avoid repeated file I/O in worker processes
+        print("Loading PDF structure data...")
+        with open(structure_path, "r", encoding="utf-8") as f:
+            structure_data = json.load(f)
+
         # Get all district/city index sections
         district_city_df = kabupaten_kota_index_struct(structure_path, province_filter)
         if len(district_city_df) == 0:
@@ -286,9 +292,11 @@ def extract_table_kabupaten_kota_index_batch(
 
             # Process batch with optional parallelization and progress tracking
             if max_workers > 1:
-                _process_batch_parallel_with_progress(file_path, batch_df, max_workers)
+                _process_batch_parallel_multiprocessing(
+                    file_path, batch_df, max_workers, log_filename
+                )
             else:
-                _process_batch_sequential_with_progress(file_path, batch_df)
+                _process_batch_sequential_with_progress(file_path, batch_df, log_filename)
 
             print(f"Batch {batch_num}/{total_batches} - Completed ✓")
 
@@ -301,53 +309,108 @@ def extract_table_kabupaten_kota_index_batch(
         print(f"Error during batch District/City table extraction: {e}")
 
 
-def _process_batch_sequential_with_progress(file_path: str, batch_df):
+def _process_batch_sequential_with_progress(file_path: str, batch_df, log_filename: Optional[str] = None):
     """Process a batch of provinces sequentially with progress bar."""
     rows = list(batch_df.iter_rows(named=True))
     results = []
+    all_log_messages = []
 
     with progress_manager.batch_processing_progress(
-        total_items=len(rows),
-        item_name="province",
-        description="Processing provinces"
+        total_items=len(rows), item_name="province", description="Processing provinces"
     ) as progress_context:
         for row in rows:
-            result = _extract_single_province(file_path, row)
+            result, log_messages = _extract_single_province(file_path, row)
             results.append(result)
+            all_log_messages.extend(log_messages)
             progress_context.advance(1)
 
+    # Write all collected log messages to file
+    if log_filename:
+        with open(log_filename, 'a', encoding='utf-8') as f:
+            for message in all_log_messages:
+                # Parse level and message
+                if message.startswith('INFO: '):
+                    level = 'INFO'
+                    msg = message[6:]
+                elif message.startswith('ERROR: '):
+                    level = 'ERROR'
+                    msg = message[7:]
+                else:
+                    level = 'INFO'
+                    msg = message
+
+                # Write formatted log entry
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"{timestamp} - {level} - {msg}\n")
+
     _print_batch_summary(results, log_filename)
 
 
-def _process_batch_parallel_with_progress(file_path: str, batch_df, max_workers: int):
-    """Process a batch of provinces in parallel with progress bar."""
-    rows = list(batch_df.iter_rows(named=True))
+def _process_batch_parallel_multiprocessing(
+    file_path: str, batch_df, max_workers: int, log_filename: Optional[str]
+):
+    """Process a batch of provinces in parallel using multiprocessing with progress bar."""
+    # Convert Polars rows to pickleable dicts
+    tasks = []
+    for row in batch_df.iter_rows(named=True):
+        tasks.append(
+            {
+                "province_name": str(row["province_name"]),
+                "name": str(row["name"]),
+                "table_format": str(row["table_format"]),
+                "start_page": int(row["start_page"]),
+                "end_page": int(row["end_page"]),
+            }
+        )
+
     results = []
+    all_log_messages = []
 
     with progress_manager.batch_processing_progress(
-        total_items=len(rows),
-        item_name="province",
-        description="Processing provinces"
-    ) as progress_context:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_row = {
-                executor.submit(_extract_single_province, file_path, row): row
-                for row in rows
-            }
+        total_items=len(tasks), item_name="province", description="Processing provinces"
+    ) as progress_ctx:
 
-            # Collect results as they complete
-            for future in as_completed(future_to_row):
-                row = future_to_row[future]
-                result = future.result()  # Get the result dict
+        with mp.Pool(processes=max_workers) as pool:
+            # Submit all tasks and collect results
+            futures = [
+                pool.apply_async(_multiprocessing_worker, (file_path, task))
+                for task in tasks
+            ]
+            for future in futures:
+                result, log_messages = future.get()
                 results.append(result)
-                progress_context.advance(1)
+                all_log_messages.extend(log_messages)
+                progress_ctx.advance(1)
+
+    # Write all collected log messages to file
+    if log_filename:
+        with open(log_filename, 'a', encoding='utf-8') as f:
+            for message in all_log_messages:
+                # Parse level and message
+                if message.startswith('INFO: '):
+                    level = 'INFO'
+                    msg = message[6:]
+                elif message.startswith('ERROR: '):
+                    level = 'ERROR'
+                    msg = message[7:]
+                else:
+                    level = 'INFO'
+                    msg = message
+
+                # Write formatted log entry
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"{timestamp} - {level} - {msg}\n")
 
     _print_batch_summary(results, log_filename)
 
 
-def _extract_single_province(file_path: str, row: dict) -> Dict:
-    """Extract data for a single province and return result dict."""
+def _multiprocessing_worker(file_path: str, task: dict) -> tuple[Dict, list[str]]:
+    """Worker function for multiprocessing (module-level, can be pickled)."""
+    return _extract_single_province(file_path, task)
+
+
+def _extract_single_province(file_path: str, row: dict) -> tuple[Dict, list[str]]:
+    """Extract data for a single province and return result dict and log messages."""
     province_name = row["province_name"]
     index_name = row["name"]
     index_table_format = row["table_format"]
@@ -356,14 +419,16 @@ def _extract_single_province(file_path: str, row: dict) -> Dict:
 
     start_time = time.time()
     result = {
-        'province_name': province_name,
-        'success': False,
-        'records': None,
-        'time': None,
-        'error': None,
-        'page_range': (index_start, index_end),
-        'files': []
+        "province_name": province_name,
+        "success": False,
+        "records": None,
+        "time": None,
+        "error": None,
+        "page_range": (index_start, index_end),
+        "files": [],
     }
+
+    log_messages = []
 
     try:
         table_extractor = PDFTableExtractor(file_path)
@@ -372,11 +437,13 @@ def _extract_single_province(file_path: str, row: dict) -> Dict:
         )
 
         extraction_time = time.time() - start_time
-        result.update({
-            'success': True,
-            'records': len(kabupaten_kota_index),
-            'time': extraction_time
-        })
+        result.update(
+            {
+                "success": True,
+                "records": len(kabupaten_kota_index),
+                "time": extraction_time,
+            }
+        )
 
         # Save table data using Polars native methods
         foldername_base = sanitize_folder_file_name(province_name)
@@ -389,20 +456,20 @@ def _extract_single_province(file_path: str, row: dict) -> Dict:
         # CSV (tabular data)
         csv_path = get_csv_output_path(f"{path_base}.csv", ensure_dir=True)
         kabupaten_kota_index.write_csv(csv_path)
-        logger.info(f"Saved CSV for {province_name}: {csv_path}")
-        result['files'].append(csv_path)
+        log_messages.append(f"INFO: Saved CSV for {province_name}: {csv_path}")
+        result["files"].append(csv_path)
 
         # Parquet (efficient storage)
         parquet_path = get_parquet_output_path(f"{path_base}.parquet", ensure_dir=True)
         kabupaten_kota_index.write_parquet(parquet_path)
-        logger.info(f"Saved Parquet for {province_name}: {parquet_path}")
-        result['files'].append(parquet_path)
+        log_messages.append(f"INFO: Saved Parquet for {province_name}: {parquet_path}")
+        result["files"].append(parquet_path)
 
         # JSON (DataFrame data only)
         json_path = get_json_output_path(f"{path_base}.json", ensure_dir=True)
         kabupaten_kota_index.write_json(json_path)
-        logger.info(f"Saved JSON for {province_name}: {json_path}")
-        result['files'].append(json_path)
+        log_messages.append(f"INFO: Saved JSON for {province_name}: {json_path}")
+        result["files"].append(json_path)
 
         # Debug JSON (metadata + sample data)
         debug_data = {
@@ -417,32 +484,29 @@ def _extract_single_province(file_path: str, row: dict) -> Dict:
         debug_path = get_json_output_path(f"{json_debug_base}.json", ensure_dir=True)
         with open(debug_path, "w", encoding="utf-8") as f:
             json.dump(debug_data, f, ensure_ascii=False, indent=2)
-        logger.info(f"Saved debug JSON for {province_name}: {debug_path}")
-        result['files'].append(debug_path)
+        log_messages.append(f"INFO: Saved debug JSON for {province_name}: {debug_path}")
+        result["files"].append(debug_path)
 
     except Exception as e:
         extraction_time = time.time() - start_time
-        result.update({
-            'time': extraction_time,
-            'error': str(e)
-        })
-        logger.error(f"Failed to extract {province_name}: {e}")
+        result.update({"time": extraction_time, "error": str(e)})
+        log_messages.append(f"ERROR: Failed to extract {province_name}: {e}")
 
-    return result
+    return result, log_messages
 
 
 def _print_batch_summary(results: List[Dict], log_filename: Optional[str] = None):
     """Print a summary of batch processing results."""
-    successful = [r for r in results if r['success']]
-    failed = [r for r in results if not r['success']]
+    successful = [r for r in results if r["success"]]
+    failed = [r for r in results if not r["success"]]
 
     print(f"✓ {len(successful)} provinces processed successfully")
     for result in successful:
-        records = result['records']
-        time_taken = result['time']
-        province = result['province_name']
+        records = result["records"]
+        time_taken = result["time"]
+        province = result["province_name"]
         if records == 0:
-            start, end = result['page_range']
+            start, end = result["page_range"]
             print(f"  - {province}: found 0 records, range page {start}-{end}")
         else:
             print(f"  - {province}: {records} records in {time_taken:.2f}s")
@@ -450,8 +514,8 @@ def _print_batch_summary(results: List[Dict], log_filename: Optional[str] = None
     if failed:
         print(f"✗ {len(failed)} provinces failed")
         for result in failed:
-            province = result['province_name']
-            error = result['error']
+            province = result["province_name"]
+            error = result["error"]
             print(f"  - {province}: {error}")
 
     if log_filename:
