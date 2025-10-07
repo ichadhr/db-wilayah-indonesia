@@ -1,0 +1,5 @@
+.venv
+.python-version
+.env
+__pycache__
+output/
