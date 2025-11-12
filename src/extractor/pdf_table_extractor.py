@@ -265,7 +265,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     try:
                         data = RegencyIndexData(
                             no=row[0],
-                            kode=row[1],
+                            kode_kabupaten_kota=row[1],
                             kabupaten_kota=row[2],
                             jumlah_kecamatan=row[3],
                             jumlah_kelurahan=row[4],

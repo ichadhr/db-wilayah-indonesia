@@ -52,7 +52,7 @@ class ProvinceIndexData(BaseModel):
 
 class RegencyIndexData(BaseModel):
     no: int
-    kode: str
+    kode_kabupaten_kota: str
     kabupaten_kota: str
     jumlah_kecamatan: int
     jumlah_kelurahan: int
@@ -82,7 +82,7 @@ class RegencyIndexData(BaseModel):
             return 0.0
         return float(format_luas(v))
 
-    @field_validator("kode", "keterangan", mode="before")
+    @field_validator("kode_kabupaten_kota", "keterangan", mode="before")
     @classmethod
     def validate_str_fields(cls, v):
         """Normalize string fields to clean newlines and extra whitespace."""
