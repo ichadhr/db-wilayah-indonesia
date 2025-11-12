@@ -569,6 +569,8 @@ dependencies = [
     { name = "notebook" },
     { name = "pdfplumber" },
     { name = "polars" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "requests" },
@@ -577,12 +579,12 @@ dependencies = [
 
 [package.optional-dependencies]
 cpu = [
-    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "torchaudio", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "torchaudio", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "torchvision", version = "0.22.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "torchvision", version = "0.22.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "torchaudio", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torchaudio", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torchvision", version = "0.22.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torchvision", version = "0.22.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 cu126 = [
     { name = "torch", version = "2.7.0+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" } },
@@ -605,6 +607,8 @@ requires-dist = [
     { name = "notebook", specifier = ">=7.4.7" },
     { name = "pdfplumber", specifier = ">=0.11.7" },
     { name = "polars", specifier = ">=1.33.1" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pypdf", specifier = ">=6.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "requests", specifier = ">=2.32.5" },
@@ -1356,9 +1360,9 @@ dependencies = [
     { name = "regex" },
     { name = "scikit-learn" },
     { name = "surya-ocr" },
-    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
     { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (extra != 'extra-9-extractor-cpu' and extra != 'extra-9-extractor-cu126')" },
-    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
     { name = "torch", version = "2.7.0+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "extra == 'extra-9-extractor-cu126'" },
     { name = "tqdm" },
     { name = "transformers" },
@@ -1646,7 +1650,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.5.1.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/93/a201a12d3ec1caa8c6ac34c1c2f9eeb696b886f0c36ff23c638b46603bd0/nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:9fd4584468533c61873e5fda8ca41bac3a38bcb2d12350830c69b0a96a7e4def", size = 570523509, upload-time = "2024-10-25T19:53:03.148Z" },
@@ -1659,7 +1663,7 @@ name = "nvidia-cufft-cu12"
 version = "11.3.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/37/c50d2b2f2c07e146776389e3080f4faf70bcc4fa6e19d65bb54ca174ebc3/nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d16079550df460376455cba121db6564089176d9bac9e4f360493ca4741b22a6", size = 200164144, upload-time = "2024-11-20T17:40:58.288Z" },
@@ -1695,9 +1699,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "nvidia-cusparse-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-cusparse-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/93/17/dbe1aa865e4fdc7b6d4d0dd308fdd5aaab60f939abfc0ea1954eac4fb113/nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:0ce237ef60acde1efc457335a2ddadfd7610b892d94efee7b776c64bb1cac9e0", size = 157833628, upload-time = "2024-10-01T17:05:05.591Z" },
@@ -1712,7 +1716,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/eb/6681efd0aa7df96b4f8067b3ce7246833dd36830bb4cec8896182773db7d/nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d25b62fb18751758fe3c93a4a08eff08effedfe4edf1c6bb5afd0890fe88f887", size = 216451147, upload-time = "2024-11-20T17:44:18.055Z" },
@@ -2691,9 +2695,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pypdfium2" },
     { name = "python-dotenv" },
-    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
     { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (extra != 'extra-9-extractor-cpu' and extra != 'extra-9-extractor-cu126')" },
-    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
     { name = "torch", version = "2.7.0+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "extra == 'extra-9-extractor-cu126'" },
     { name = "transformers" },
 ]
@@ -2800,17 +2804,16 @@ name = "torch"
 version = "2.7.0"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "filelock", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "fsspec", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "jinja2", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "networkx", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "setuptools", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "sympy", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "typing-extensions", marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.0-cp313-cp313t-macosx_14_0_arm64.whl", hash = "sha256:edad98dddd82220465b106506bb91ee5ce32bd075cddbcf2b443dfaa2cbd83bf" },
@@ -2874,15 +2877,16 @@ resolution-markers = [
     "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
     "(python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
     "python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
-    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "filelock", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "fsspec", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "jinja2", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "networkx", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "setuptools", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "sympy", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
+    { name = "typing-extensions", marker = "(python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu') or (python_full_version < '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.0%2Bcpu-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:addf9107939522ffb3b60d2900fee838a77dbe098e2643e01164f46f8612f9c0" },
@@ -2942,11 +2946,10 @@ version = "2.7.0"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
-    "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
     { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
@@ -2965,9 +2968,10 @@ resolution-markers = [
     "python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux'",
     "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
     "(python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin') or (python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torchaudio-2.7.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:a807a6dabb9fe2d69c9cf49671dafdca5b180e62f8e941ce768f962421cdc1db" },
@@ -3004,13 +3008,12 @@ version = "0.22.0"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
-    "python_full_version >= '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or sys_platform == 'darwin'" },
-    { name = "pillow", marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or sys_platform == 'darwin'" },
-    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "numpy", marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or (python_full_version < '3.14' and sys_platform == 'darwin')" },
+    { name = "pillow", marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux') or (python_full_version < '3.14' and sys_platform == 'darwin')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
     { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-9-extractor-cpu') or (python_full_version >= '3.14' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (platform_python_implementation != 'CPython' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
@@ -3029,11 +3032,12 @@ resolution-markers = [
     "python_full_version < '3.14' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux'",
     "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
     "(python_full_version < '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'linux')",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", marker = "(python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
-    { name = "pillow", marker = "(python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
-    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "numpy", marker = "(python_full_version >= '3.14' and sys_platform == 'darwin') or (python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "pillow", marker = "(python_full_version >= '3.14' and sys_platform == 'darwin') or (python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "torch", version = "2.7.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin') or (python_full_version >= '3.14' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torchvision-0.22.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:5878553b984d5903f4428a0de4d9e07a8d8d6c46a1a1072da6b2064c6e673a74" },
@@ -3132,7 +3136,7 @@ name = "triton"
 version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-9-extractor-cu126') or (platform_machine != 'aarch64' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform == 'darwin' and extra == 'extra-9-extractor-cu126') or (sys_platform != 'linux' and extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
+    { name = "setuptools", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-9-extractor-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-extractor-cpu') or (extra == 'extra-9-extractor-cpu' and extra == 'extra-9-extractor-cu126')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7d/74/4bf2702b65e93accaa20397b74da46fb7a0356452c1bb94dbabaf0582930/triton-3.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:47bc87ad66fa4ef17968299acacecaab71ce40a238890acc6ad197c3abe2b8f1", size = 156516468, upload-time = "2025-04-09T20:27:48.196Z" },

@@ -146,9 +146,105 @@ def normalize_kabupaten_kota(text: str) -> str:
 
     # Expand common abbreviations (case-insensitive)
     replacements = [
+        (r'^\d+\.?\s+', '', 0),
         (r'^kab\s+', 'Kabupaten ', re.IGNORECASE),
         (r'\badm\.\s+', 'Administrasi ', re.IGNORECASE),
         # Add other abbreviations as needed
+    ]
+
+    for pattern, replacement, flags in replacements:
+        text = re.sub(pattern, replacement, text, flags=flags)
+
+    return text
+
+
+def normalize_ibukota_kabupaten_kota(text: str) -> str:
+    """
+    Normalize ibukota/kabupaten/kota names by expanding abbreviations and removing suffixes.
+
+    Args:
+        text: Input text that may contain abbreviations or suffixes
+
+    Returns:
+        Text with abbreviations expanded to full forms and suffixes removed
+    """
+    import re
+
+    if not text:
+        return ""
+
+    # First clean the text
+    text = format_text(text)
+
+    # Expand common abbreviations and remove suffixes (case-insensitive)
+    replacements = [
+        (r', Kec\..*$', '', re.IGNORECASE),
+        (r'\bP\.\s+', 'Pulau ', re.IGNORECASE)
+        # Add other abbreviations as needed
+    ]
+
+    for pattern, replacement, flags in replacements:
+        text = re.sub(pattern, replacement, text, flags=flags)
+
+    return text
+
+
+def normalize_kecamatan(text: str) -> str:
+    """
+    Normalize kecamatan names by expanding abbreviations.
+
+    Args:
+        text: Input text that may contain abbreviations
+
+    Returns:
+        Text with abbreviations expanded to full forms
+    """
+    import re
+
+    if not text:
+        return ""
+
+    # First clean the text
+    text = format_text(text)
+
+    # Expand common abbreviations (case-insensitive)
+    replacements = [
+        (r'^\d+', '', 0),  # Remove leading digits
+        (r'\bKec\.\s*', 'Kecamatan ', re.IGNORECASE),
+        # Add other abbreviations as needed
+    ]
+
+    for pattern, replacement, flags in replacements:
+        text = re.sub(pattern, replacement, text, flags=flags)
+
+    return text
+
+
+def normalize_kelurahan_desa(text: str) -> str:
+    """
+    Normalize kelurahan/desa names by expanding abbreviations.
+
+    Args:
+        text: Input text that may contain abbreviations
+
+    Returns:
+        Text with abbreviations expanded to full forms
+    """
+    import re
+
+    if not text:
+        return ""
+
+    # First clean the text
+    text = format_text(text)
+
+    # Expand common abbreviations (case-insensitive)
+    replacements = [
+        (r'^\d+\.?\s+', '', 0),  # Existing: Remove leading numbers
+        (r'\bKel\.\s*', 'Kelurahan ', re.IGNORECASE),
+        (r'\bDs\.\s*', 'Desa ', re.IGNORECASE),
+        (r'\bKamp\.\s*', 'Kampung ', re.IGNORECASE),
+        (r'\bDus\.\s*', 'Dusun ', re.IGNORECASE),
     ]
 
     for pattern, replacement, flags in replacements:

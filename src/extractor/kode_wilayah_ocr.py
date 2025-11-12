@@ -1,9 +1,15 @@
 """
 Kode Wilayah OCR Extractor
 
-This module provides OCR-based extraction of kode wilayah data from SNI documents.
-It downloads the required images, converts them to PDF, and then performs OCR
-to extract structured table data.
+Extracts administrative region codes from SNI documents using OCR.
+Downloads SNI abbreviation images, converts to PDF, and extracts structured table data.
+
+Pipeline:
+1. Download SNI images with intelligent retry logic
+2. Convert images to searchable PDF
+3. Perform OCR on specified page ranges
+4. Extract and clean table data
+5. Save results as Parquet file
 """
 
 import os
@@ -18,26 +24,20 @@ from marker.output import text_from_rendered
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
 from utils.normalize import kode_wilayah
 from utils.paths import (
-    get_csv_output_path,
     get_datas_dir,
-    get_json_output_path,
     get_parquet_output_path,
 )
 
-# Constants
+# Configuration
 SNI_DOC_ID = "SNI_7657-2023"
 
 
 class KodeWilayahOCR:
     """
-    OCR extractor for kode wilayah data from SNI documents.
+    OCR-based extractor for Indonesian administrative region codes from SNI documents.
 
-    This class handles the complete pipeline:
-    1. Downloads SNI abbreviation images
-    2. Converts images to PDF
-    3. Performs OCR on the PDF
-    4. Extracts and cleans table data
-    5. Saves results in multiple formats
+    Handles the complete extraction pipeline from image download to structured data output.
+    Uses intelligent retry logic for robust image downloading and Marker library for OCR.
     """
 
     def __init__(self, page_range: str = "10-24"):
@@ -63,114 +63,123 @@ class KodeWilayahOCR:
 
     def extract_kode_wilayah(self) -> TableKodeWilayah:
         """
-        Extract kode wilayah data through the complete OCR pipeline.
+        Execute the complete kode wilayah extraction pipeline.
 
         Returns:
-            TableKodeWilayah: Extracted and cleaned kode wilayah data
+            TableKodeWilayah: Structured kode wilayah data
+
+        Raises:
+            RuntimeError: If image download fails or PDF is not found
         """
-        # Step 1: Download images and create PDF
+        # Download and prepare source images
         print("Downloading SNI abbreviation images...")
-        download_singkatan_images()
-
-        # Step 2: Define PDF path
-        pdf_path = os.path.join(get_datas_dir(), f"{SNI_DOC_ID}.pdf")
-
-        if not os.path.exists(pdf_path):
-            raise FileNotFoundError(
-                f"PDF not found at {pdf_path}. Make sure download_singkatan_images() completed successfully."
+        success, failed_images = download_singkatan_images()
+        if not success:
+            raise RuntimeError(
+                f"Failed to download SNI images. Failed images: {', '.join(failed_images)}. "
+                "Cannot proceed with OCR extraction."
             )
 
-        # Step 3: Perform OCR on PDF
-        # Convert 0-based page range to 1-based for display
-        if "-" in self.page_range:
-            start, end = self.page_range.split("-")
-            display_pages = f"{int(start) + 1}-{int(end) + 1}"
-        else:
-            display_pages = str(int(self.page_range) + 1)
+        # Verify PDF exists
+        pdf_path = os.path.join(get_datas_dir(), f"{SNI_DOC_ID}.pdf")
+        if not os.path.exists(pdf_path):
+            raise FileNotFoundError(
+                f"PDF not found at {pdf_path}. Download process may have failed."
+            )
+
+        # Perform OCR extraction
+        display_pages = self._format_page_range_for_display()
         print(f"Performing OCR on {pdf_path} (pages {display_pages})...")
+
         rendered = self.converter(pdf_path)
         text, _, _ = text_from_rendered(rendered)
 
-        # Step 4: Process and clean the extracted table data
-        cleaned_records = KodeWilayahOCR._process_table_text(text)
+        # Process and clean extracted data
+        cleaned_records = self._process_table_text(text)
+        self._save_results(cleaned_records)
 
-        # Step 5: Save results in multiple formats
-        KodeWilayahOCR._save_results(cleaned_records)
+        return TableKodeWilayah(records=cleaned_records)
 
-        # Step 6: Return structured data
-        table = TableKodeWilayah(records=cleaned_records)
-        return table
+    def _format_page_range_for_display(self) -> str:
+        """Convert 0-based page range to 1-based for user display."""
+        if "-" in self.page_range:
+            start, end = self.page_range.split("-")
+            return f"{int(start) + 1}-{int(end) + 1}"
+        else:
+            return str(int(self.page_range) + 1)
 
-    @staticmethod
-    def _process_table_text(text: str) -> list[KodeWilayah]:
+    def _process_table_text(self, text: str) -> list[KodeWilayah]:
         """
-        Process raw OCR text and extract cleaned table records.
+        Process raw OCR text and extract cleaned kode wilayah records.
 
         Args:
-            text: Raw OCR text from PDF
+            text: Raw OCR text from PDF containing table data
 
         Returns:
-            List of cleaned record dictionaries
+            List of validated KodeWilayah objects
         """
-        # Clean and parse table markdown
-        table_md = "\n".join(
-            [
-                line
-                for line in text.split("\n")
-                if not line.startswith("|-----") and line.strip()
-            ]
-        )
+        # Clean table markdown by removing separator lines
+        table_lines = [
+            line for line in text.split("\n")
+            if not line.startswith("|-----") and line.strip()
+        ]
+        table_md = "\n".join(table_lines)
+
+        # Parse table into DataFrame
         df = pl.read_csv(StringIO(table_md), separator="|", has_header=True)
         df = df.select([col for col in df.columns if col.strip()])
-        columns = df.columns
 
-        # Identify column names
-        no_col = next(col for col in columns if "No" in col)
-        prov_col = next(col for col in columns if "Provinsi" in col)
-        kab_col = next(col for col in columns if "Kabupaten" in col)
-        nama_col = next(col for col in columns if "Nama Kota" in col)
-        singkatan_col = next(col for col in columns if "Singkatan" in col)
-        parent_col = next(col for col in columns if "Parent" in col)
+        # Identify columns by content patterns
+        column_map = self._identify_table_columns(df.columns)
 
-        # Clean and validate records
+        # Extract and validate records
         cleaned_records = []
-
         for record in df.to_dicts():
-            # Map column names to expected keys
-            record_mapped = {
-                "no": record[no_col],
-                "provinsi": record[prov_col],
-                "kabupaten_kota": record[kab_col],
-                "nama_kota": record[nama_col],
-                "singkatan_nama_kota": record[singkatan_col],
-                "parent_subdivision": record[parent_col],
+            mapped_record = {
+                "no": record[column_map["no"]],
+                "provinsi": record[column_map["provinsi"]],
+                "kabupaten_kota": record[column_map["kabupaten"]],
+                "nama_kota": record[column_map["nama_kota"]],
+                "singkatan_nama_kota": record[column_map["singkatan"]],
+                "parent_subdivision": record[column_map["parent"]],
             }
-            kode_wilayah_obj = kode_wilayah(record_mapped)
+
+            kode_wilayah_obj = kode_wilayah(mapped_record)
             if kode_wilayah_obj:
                 cleaned_records.append(kode_wilayah_obj)
 
         return cleaned_records
 
-    @staticmethod
-    def _save_results(records: list[KodeWilayah]) -> None:
+    def _identify_table_columns(self, columns: list[str]) -> dict[str, str]:
         """
-        Save extracted data in multiple formats.
+        Identify table columns by matching against expected patterns.
 
         Args:
-            records: List of cleaned record dictionaries
+            columns: List of column names from OCR
+
+        Returns:
+            Dict mapping expected column types to actual column names
+        """
+        return {
+            "no": next(col for col in columns if "No" in col),
+            "provinsi": next(col for col in columns if "Provinsi" in col),
+            "kabupaten": next(col for col in columns if "Kabupaten" in col),
+            "nama_kota": next(col for col in columns if "Nama Kota" in col),
+            "singkatan": next(col for col in columns if "Singkatan" in col),
+            "parent": next(col for col in columns if "Parent" in col),
+        }
+
+    def _save_results(self, records: list[KodeWilayah]) -> None:
+        """
+        Save extracted kode wilayah data as Parquet file.
+
+        Args:
+            records: List of validated KodeWilayah objects
         """
         df_clean = pl.DataFrame([r.model_dump() for r in records])
-
-        # Save as Parquet
         df_clean.write_parquet(get_parquet_output_path("kode_wilayah.parquet"))
 
-        # Save as CSV
-        df_clean.write_csv(get_csv_output_path("kode_wilayah.csv"))
-
-        # Save as JSON
-        df_clean.write_json(get_json_output_path("kode_wilayah.json"))
-
-        print("Kode wilayah data saved successfully in parquet, csv, and json formats.")
+        print(f"Kode wilayah data saved successfully: {len(records)} records in parquet format.")
 
 
 # For backward compatibility, if run as script
