@@ -25,6 +25,8 @@ dependencies = [
 dev = [
     "ipykernel>=6.30.1",
     "ipywidgets>=8.1.7",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
 ]
 
 # The package is only installed on Linux systems
@@ -66,3 +68,36 @@ explicit = true
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
 explicit = true
+
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+]
+
+filterwarnings = ["ignore::DeprecationWarning:pydantic"]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/notebooks/*",
+    "*/__pycache__/*",
+    "*/scripts/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

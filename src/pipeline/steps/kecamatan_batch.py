@@ -1,9 +1,7 @@
 import os
 from typing import Optional, Any
 
-import polars as pl
-
-from batch_processor import BatchProcessor, _extract_single_province_kecamatan
+from ..batch_processor import BatchProcessor, _extract_single_province_kecamatan
 from utils.paths import get_json_output_path
 from utils.structure_utils import kecamatan_index_struct
 

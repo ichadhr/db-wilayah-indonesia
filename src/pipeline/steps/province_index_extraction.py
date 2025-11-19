@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Any, List
+from typing import Optional, Any
 
 from extractor.pdf_table_extractor import PDFTableExtractor
 from utils.paths import (

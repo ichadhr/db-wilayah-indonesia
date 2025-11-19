@@ -1,6 +1,10 @@
 import os
 import csv
+import logging
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
 
 class CorrectionLoader:
     """
@@ -22,24 +26,39 @@ class CorrectionLoader:
         csv_path = os.path.join(os.path.dirname(__file__), "correction.csv")
         
         if not os.path.exists(csv_path):
+            logger.warning(f"Correction file not found: {csv_path}")
             return
 
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                fix_source = row.get('fix_source', '').strip()
-                source_value = row.get('source_value', '').strip()
-                corrected_value = row.get('corrected_value', '').strip()
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
                 
-                if not fix_source or not source_value:
-                    continue
+                # Validate CSV headers
+                expected_headers = {'fix_source', 'source_value', 'corrected_value'}
+                if not expected_headers.issubset(set(reader.fieldnames or [])):
+                    logger.error(f"Invalid CSV format. Expected headers: {expected_headers}, got: {reader.fieldnames}")
+                    return
+                
+                count = 0
+                for row in reader:
+                    fix_source = row.get('fix_source', '').strip()
+                    source_value = row.get('source_value', '').strip()
+                    corrected_value = row.get('corrected_value', '').strip()
                     
-                if fix_source not in self._corrections:
-                    self._corrections[fix_source] = {}
-                    self._metadata[fix_source] = {}
-                    
-                self._corrections[fix_source][source_value] = corrected_value
-                self._metadata[fix_source][source_value] = row
+                    if not fix_source or not source_value:
+                        continue
+                        
+                    if fix_source not in self._corrections:
+                        self._corrections[fix_source] = {}
+                        self._metadata[fix_source] = {}
+                        
+                    self._corrections[fix_source][source_value] = corrected_value
+                    self._metadata[fix_source][source_value] = row
+                    count += 1
+                
+                logger.info(f"Loaded {count} corrections from {csv_path}")
+        except Exception as e:
+            logger.error(f"Failed to load corrections: {e}")
 
     def get_correction(self, value: str, fix_source: str) -> Optional[str]:
         """

@@ -1,5 +1,9 @@
-"""Configuration module for the data pipeline."""
+"""Configuration management."""
 
-from .settings import Settings
+from .settings import settings, PipelineSettings, Settings
 
-__all__ = ["Settings"]
+__all__ = [
+    'settings',
+    'PipelineSettings',
+    'Settings',
+]

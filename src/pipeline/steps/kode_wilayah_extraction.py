@@ -1,6 +1,5 @@
 import json
-import os
-from typing import Optional, Any, List
+from typing import Optional, Any
 
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from utils.paths import (
@@ -11,6 +10,7 @@ from utils.paths import (
 )
 from config.settings import settings
 from ..validation import validate_kode_wilayah_data
+import polars as pl
 
 
 def execute_kode_wilayah_extraction(config, logger=None) -> Optional[Any]:
@@ -28,7 +28,6 @@ def execute_kode_wilayah_extraction(config, logger=None) -> Optional[Any]:
     logger.info(f"Extracted {len(kode_wilayah_table.records)} kode wilayah records")
 
     # Convert to DataFrame for saving
-    import polars as pl
     df_clean = pl.DataFrame([r.model_dump() for r in kode_wilayah_table.records])
 
     # Validate kode wilayah data

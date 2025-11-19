@@ -3,24 +3,12 @@ import logging
 import multiprocessing as mp
 import os
 import signal
-import sys
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
-from dotenv import load_dotenv
-from extractor.kode_wilayah_ocr import KodeWilayahOCR
-from extractor.pdf_structure_extractor import PDFStructureExtractor
-from extractor.pdf_table_extractor import PDFTableExtractor
-from utils.paths import (
-    ensure_output_dirs,
-    get_csv_output_path,
-    get_json_output_path,
-    get_parquet_output_path,
-    get_pdf_path,
-    sanitize_folder_file_name
-)
+from utils.paths import get_json_output_path
 # Import removed - using config.settings instead
 from .steps.structure_extraction import execute_structure_extraction
 from .steps.kode_wilayah_extraction import execute_kode_wilayah_extraction
@@ -30,7 +18,7 @@ from .steps.kabupaten_kota_detail_batch import execute_kabupaten_kota_detail_bat
 from .steps.kecamatan_batch import execute_kecamatan_batch
 
 # Import the global shutdown event from batch_processor
-from batch_processor import shutdown_event
+from .batch_processor import shutdown_event
 
 logger = logging.getLogger(__name__)
 
@@ -203,8 +191,6 @@ class PipelineOrchestrator:
         try:
             # Step 1: PDF Structure Analysis
             # Always check if structure file exists, even if step is marked as completed
-            from utils.paths import get_json_output_path
-            import os
             structure_path = get_json_output_path("structure_pdf.json")
             if PipelineStep.STRUCTURE_EXTRACTION.value not in completed_steps or not os.path.exists(structure_path):
                 if not self._execute_step(PipelineStep.STRUCTURE_EXTRACTION):

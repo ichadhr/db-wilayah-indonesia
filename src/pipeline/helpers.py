@@ -8,11 +8,11 @@ from utils.paths import (
     get_csv_output_path,
     get_json_output_path,
     get_parquet_output_path,
-    get_pdf_path,
     sanitize_folder_file_name
 )
 from utils.structure_utils import provinsi_index_struct, kabupaten_kota_index_struct, kecamatan_index_struct
 from config.settings import settings
+from .batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota
 
 
 def extract_pdf_structure(doc_path: str):
@@ -319,5 +319,3 @@ def extract_code_wilayah():
         print(f"Error during OCR extraction: {e}")
 
 
-# Import here to avoid circular imports
-from batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota

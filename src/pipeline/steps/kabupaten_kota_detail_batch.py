@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Any
 
-from batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota_detail
+from ..batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota_detail
 from utils.paths import get_json_output_path
 from utils.structure_utils import kabupaten_kota_detail_struct
 
