@@ -1,10 +1,51 @@
 import os
+import re
 from typing import Any, List, Optional
 
 import pdfplumber
 import polars as pl
 from models.pdf_table import ProvinceIndexData, RegencyIndexData, DistrictIndexData, DetailsData
 from utils.progress import progress_manager
+from utils.converter import normalize_ibukota_kabupaten_kota
+
+
+def get_p_bsni_mapping() -> dict[str, str]:
+    """
+    Load province name to abbreviation mapping from kode_wilayah.parquet file.
+
+    Returns:
+        Dictionary mapping province names to their ISO abbreviations (with ID- prefix)
+    """
+    parquet_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
+    df = pl.read_parquet(parquet_path)
+    mapping = {}
+    for row in df.to_dicts():
+        provinsi = row["provinsi"]
+        parent_subdivision = row["parent_subdivision"]
+        # Keep the full ID-XX format
+        if parent_subdivision:
+            mapping[provinsi] = parent_subdivision
+    return mapping
+
+
+def get_k_bsni_mapping() -> dict[str, str]:
+    """
+    Load ibukota_kabupaten_kota to singkatan_nama_kota mapping from kode_wilayah.parquet file.
+
+    Returns:
+        Dictionary mapping normalized ibukota_kabupaten_kota names to singkatan_nama_kota
+    """
+    parquet_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
+    df = pl.read_parquet(parquet_path)
+    mapping = {}
+    for row in df.to_dicts():
+        nama_kota = row["nama_kota"]
+        singkatan = row["singkatan_nama_kota"]
+        if nama_kota and singkatan:
+            # Normalize the key: remove "Kota " prefix, spaces and convert to lowercase
+            normalized_key = re.sub(r'^Kota\s+', '', nama_kota, flags=re.IGNORECASE).replace(" ", "").lower()
+            mapping[normalized_key] = singkatan
+    return mapping
 
 
 class PDFTableExtractorBase:
@@ -194,6 +235,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                         no=row[0],
                         kode=row[1],
                         provinsi=row[2],
+                        p_bsni="",  # Will be filled by DataFrame operations
                         jumlah_kabupaten=row[3],
                         jumlah_kota=row[4],
                         jumlah_kecamatan=row[5],
@@ -207,7 +249,64 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 except (ValueError, IndexError) as e:
                     raise ValueError(f"Failed to parse table row {row}: {e}")
 
-        return pl.DataFrame([data.model_dump() for data in province_index_data])
+        # DataFrame-based matching for p_bsni
+        df_province = pl.DataFrame([data.model_dump() for data in province_index_data])
+
+        # Filter provinces that have provinsi name (not empty)
+        provinces_with_name = df_province.filter(pl.col("provinsi") != "")
+
+        # Deduplicate provinces to avoid duplicates in join (PDF may have repeated rows)
+        provinces_with_name = provinces_with_name.unique(subset=["provinsi"])
+
+        if len(provinces_with_name) > 0:
+            # Load kode_wilayah DataFrame
+            kode_wilayah_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
+            df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+
+            # Perform join on provinsi name
+            joined = provinces_with_name.join(
+                df_kode_wilayah,
+                left_on="provinsi",
+                right_on="provinsi",
+                how="left"
+            )
+
+            # Update p_bsni field and identify unmatched
+            matched = joined.filter(pl.col("parent_subdivision").is_not_null())
+            unmatched = joined.filter(pl.col("parent_subdivision").is_null())
+
+            # Collect unmatched province names
+            unmatched_provinces = []
+            for row in unmatched.iter_rows(named=True):
+                unmatched_provinces.append(row["provinsi"])
+
+            # Log unmatched provinces
+            if unmatched_provinces:
+                log_path = os.path.join(os.path.dirname(__file__), "..", "output", "log", "unmatched_p_bsni.log")
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"Extraction run at {os.path.basename(__file__)} - {len(unmatched_provinces)} unmatched province names:\n")
+                    for name in unmatched_provinces:
+                        f.write(f"  - {name}\n")
+                    f.write("\n")
+
+            # Update the original dataframe with matched p_bsni values
+            if len(matched) > 0:
+                matched_updates = matched.select(["provinsi", "parent_subdivision"])
+                df_province = df_province.join(
+                    matched_updates,
+                    on="provinsi",
+                    how="left"
+                ).with_columns(
+                    p_bsni=pl.when(pl.col("parent_subdivision").is_not_null())
+                            .then(pl.col("parent_subdivision"))
+                            .otherwise(pl.col("p_bsni"))
+                ).drop("parent_subdivision")
+
+        # Deduplicate final dataframe to remove any remaining duplicates
+        df_province = df_province.unique(subset=["provinsi"])
+
+        return df_province
 
 
     def kabupaten_kota_index(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:
@@ -285,7 +384,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         return pl.DataFrame([data.model_dump() for data in regency_index_data])
 
 
-    def kecamatan_index(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:
+    def kecamatan_index(self, start_page: int, end_page: int, show_progress: bool = True) -> tuple[pl.DataFrame, list]:
         """
         Extract district index table.
 
@@ -295,7 +394,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
             show_progress: Whether to display progress bar during extraction
 
         Returns:
-            Polars DataFrame with district data
+            Tuple of (Polars DataFrame with district data, list of unmatched ibukota names)
         """
         # Use specific settings for district index tables
         kecamatan_index_settings = {} # empty config
@@ -308,6 +407,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         )
 
         district_index_data = []
+        unmatched_names = []  # list of (ibukota_name, kode_kecamatan)
 
         # Context variables for hierarchical data
         current_province = {
@@ -354,6 +454,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     ibukota_kabupaten_kota="",
                     kode_kecamatan="",
                     kecamatan=district_name,
+                    k_bsni="",
                     jumlah_kabupaten=0,
                     jumlah_kota=0,
                     jumlah_kecamatan=0,
@@ -403,6 +504,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     ibukota_kabupaten_kota="",
                     kode_kecamatan="",
                     kecamatan="",
+                    k_bsni="",
                     jumlah_kabupaten=safe_row_val(row, 4, 0),
                     jumlah_kota=safe_row_val(row, 5, 0),
                     jumlah_kecamatan=safe_row_val(row, 6, 0),
@@ -442,6 +544,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     ibukota_kabupaten_kota=safe_row_val(row, 3, ""),
                     kode_kecamatan="",
                     kecamatan="",
+                    k_bsni="",
                     jumlah_kabupaten=0,
                     jumlah_kota=0,  # Regency has 0 for these
                     jumlah_kecamatan=safe_row_val(row, 6, 0),
@@ -462,6 +565,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     'keterangan': safe_row_val(row, 11, "")
                 }
 
+                # Temporarily set k_bsni to empty - will be filled by DataFrame operations
+                k_bsni_value = ""
+
                 data = DistrictIndexData(
                     no=current_province['no'],  # Inherit province Roman numeral
                     **base_data,
@@ -470,6 +576,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     ibukota_kabupaten_kota=current_regency['ibukota_kabupaten_kota'],
                     kode_kecamatan=kode_kecamatan,
                     kecamatan=safe_row_val(row, 2, ""),
+                    k_bsni=k_bsni_value,
                     jumlah_kabupaten=0,
                     jumlah_kota=0,
                     jumlah_kecamatan=0,  # District has 0 for these
@@ -479,7 +586,91 @@ class PDFTableExtractor(PDFTableExtractorBase):
 
                 district_index_data.append(data)
 
-        return pl.DataFrame([data.model_dump() for data in district_index_data])
+        # DataFrame-based matching for k_bsni
+        df_district = pl.DataFrame([data.model_dump() for data in district_index_data])
+
+        # Filter districts that have ibukota_kabupaten_kota (not empty)
+        districts_with_ibukota = df_district.filter(
+            (pl.col("ibukota_kabupaten_kota") != "") &
+            (pl.col("kode_kecamatan") != "")
+        )
+
+        if len(districts_with_ibukota) > 0:
+            # Load kode_wilayah DataFrame
+            kode_wilayah_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
+            df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+
+            # Prepare kode_wilayah for join - create normalized key
+            df_kode_wilayah_join = df_kode_wilayah.with_columns(
+                normalized_nama_kota=(
+                    pl.col("nama_kota")
+                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
+                )
+            )
+
+            # Prepare districts for join
+            districts_join = districts_with_ibukota.with_columns(
+                normalized_ibukota=(
+                    pl.col("ibukota_kabupaten_kota")
+                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
+                )
+            )
+
+            # Apply corrections to normalized_ibukota using CorrectionLoader
+            from utils.correction import CorrectionLoader
+            corrector = CorrectionLoader()
+            
+            # We need to apply corrections to the original ibukota first, then re-normalize
+            # Or apply to the normalized key if the correction map supports it.
+            # The plan says: apply corrections to ibukota_kabupaten_kota *before* the join.
+            # So let's correct the 'ibukota_kabupaten_kota' column first.
+            
+            def apply_kecamatan_correction(val):
+                if not val: return val
+                corrected = corrector.get_correction(val, 'kecamatan_index')
+                return corrected if corrected else val
+
+            districts_join = districts_join.with_columns(
+                ibukota_kabupaten_kota=pl.col("ibukota_kabupaten_kota").map_elements(apply_kecamatan_correction, return_dtype=pl.Utf8)
+            ).with_columns(
+                # Re-calculate normalized_ibukota after correction
+                normalized_ibukota=(
+                    pl.col("ibukota_kabupaten_kota")
+                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
+                )
+            )
+
+            # Perform join
+            joined = districts_join.join(
+                df_kode_wilayah_join,
+                left_on="normalized_ibukota",
+                right_on="normalized_nama_kota",
+                how="left"
+            )
+
+            # Update k_bsni field and identify unmatched
+            matched = joined.filter(pl.col("singkatan_nama_kota").is_not_null())
+            unmatched = joined.filter(pl.col("singkatan_nama_kota").is_null())
+
+            # Collect unmatched names
+            for row in unmatched.iter_rows(named=True):
+                expanded_name = normalize_ibukota_kabupaten_kota(row["ibukota_kabupaten_kota"])
+                unmatched_names.append((expanded_name, row["kabupaten_kota"]))
+
+            # Update the original dataframe with matched k_bsni values
+            if len(matched) > 0:
+                matched_updates = matched.select(["kode_kecamatan", "singkatan_nama_kota"])
+                df_district = df_district.join(
+                    matched_updates,
+                    on="kode_kecamatan",
+                    how="left"
+                ).with_columns(
+                    k_bsni=pl.when(pl.col("singkatan_nama_kota").is_not_null())
+                           .then(pl.col("singkatan_nama_kota"))
+                           .otherwise(pl.col("k_bsni"))
+                ).drop("singkatan_nama_kota")
+
+        return df_district, unmatched_names
 
 
     def kabupaten_kota_detail(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:

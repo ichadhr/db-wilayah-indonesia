@@ -8,6 +8,8 @@ from models.kode_wilayah import KodeWilayah
 from utils.converter import convert_cyrillic_to_latin
 
 
+
+
 def kode_wilayah(raw_record: dict) -> KodeWilayah | None:
     """
     Normalize and create KodeWilayah instance from raw OCR record.

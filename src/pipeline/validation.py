@@ -1,6 +1,40 @@
 from typing import List
 
 
+def validate_kode_wilayah_data(df) -> List[str]:
+    """Validate kode wilayah data for consistency and completeness."""
+    errors = []
+
+    if len(df) == 0:
+        errors.append("No kode wilayah records found")
+        return errors
+
+    # Check required columns
+    required_columns = ["no", "provinsi", "kabupaten_kota", "nama_kota", "singkatan_nama_kota", "parent_subdivision"]
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        errors.append(f"Missing required columns: {missing_columns}")
+
+    # Check for empty/null values in critical fields
+    for col in ["provinsi", "kabupaten_kota", "parent_subdivision"]:
+        if col in df.columns:
+            null_count = df.filter(df[col].is_null() | (df[col] == "")).height
+            if null_count > 0:
+                errors.append(f"Found {null_count} null/empty values in {col}")
+
+    # Validate parent_subdivision format (should be ID-XX)
+    if "parent_subdivision" in df.columns:
+        invalid_codes = []
+        for row in df.iter_rows(named=True):
+            code = str(row.get("parent_subdivision", ""))
+            if code and not (code.startswith("ID-") and len(code) >= 4):
+                invalid_codes.append(f"{row.get('provinsi', 'Unknown')}: {code}")
+        if invalid_codes:
+            errors.append(f"Invalid parent_subdivision codes: {invalid_codes[:5]}")  # Show first 5
+
+    return errors
+
+
 def validate_province_data(df) -> List[str]:
     """Validate province index data for consistency and completeness."""
     errors = []

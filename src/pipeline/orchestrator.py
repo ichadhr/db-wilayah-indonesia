@@ -23,6 +23,7 @@ from utils.paths import (
 )
 # Import removed - using config.settings instead
 from .steps.structure_extraction import execute_structure_extraction
+from .steps.kode_wilayah_extraction import execute_kode_wilayah_extraction
 from .steps.province_index_extraction import execute_province_index_extraction
 from .steps.kabupaten_kota_batch import execute_kabupaten_kota_batch
 from .steps.kabupaten_kota_detail_batch import execute_kabupaten_kota_detail_batch
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 class PipelineStep(Enum):
     """Enumeration of pipeline steps."""
     STRUCTURE_EXTRACTION = "structure_extraction"
+    KODE_WILAYAH_EXTRACTION = "kode_wilayah_extraction"
     PROVINCE_INDEX_EXTRACTION = "province_index_extraction"
     KABUPATEN_KOTA_INDEX_BATCH = "kabupaten_kota_index_batch"
     KABUPATEN_KOTA_DETAIL_BATCH = "kabupaten_kota_detail_batch"
@@ -215,7 +217,17 @@ class PipelineOrchestrator:
                 self._handle_shutdown()
                 return False
 
-            # Step 2: Province Index Extraction
+            # Step 2: Kode Wilayah Extraction
+            if PipelineStep.KODE_WILAYAH_EXTRACTION.value not in completed_steps:
+                if not self._execute_step(PipelineStep.KODE_WILAYAH_EXTRACTION):
+                    return False
+
+            # Check for shutdown request
+            if self.shutdown_requested:
+                self._handle_shutdown()
+                return False
+
+            # Step 3: Province Index Extraction
             if PipelineStep.PROVINCE_INDEX_EXTRACTION.value not in completed_steps:
                 if not self._execute_step(PipelineStep.PROVINCE_INDEX_EXTRACTION):
                     return False
@@ -227,7 +239,7 @@ class PipelineOrchestrator:
                 self._handle_shutdown()
                 return False
 
-            # Step 3: Kabupaten/Kota Index Batch
+            # Step 4: Kabupaten/Kota Index Batch
             if PipelineStep.KABUPATEN_KOTA_INDEX_BATCH.value not in completed_steps:
                 if not self._execute_step(PipelineStep.KABUPATEN_KOTA_INDEX_BATCH):
                     return False
@@ -239,7 +251,7 @@ class PipelineOrchestrator:
                 self._handle_shutdown()
                 return False
 
-            # Step 4: Kecamatan Index Batch
+            # Step 5: Kecamatan Index Batch
             if PipelineStep.KECAMATAN_INDEX_BATCH.value not in completed_steps:
                 if not self._execute_step(PipelineStep.KECAMATAN_INDEX_BATCH):
                     return False
@@ -251,7 +263,7 @@ class PipelineOrchestrator:
                 self._handle_shutdown()
                 return False
 
-            # Step 5: Kabupaten/Kota Detail Batch
+            # Step 6: Kabupaten/Kota Detail Batch
             if PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH.value not in completed_steps:
                 if not self._execute_step(PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH):
                     return False
@@ -289,6 +301,8 @@ class PipelineOrchestrator:
 
             if step == PipelineStep.STRUCTURE_EXTRACTION:
                 result = self._execute_structure_extraction()
+            elif step == PipelineStep.KODE_WILAYAH_EXTRACTION:
+                result = self._execute_kode_wilayah_extraction()
             elif step == PipelineStep.PROVINCE_INDEX_EXTRACTION:
                 result = self._execute_province_index_extraction()
             elif step == PipelineStep.KABUPATEN_KOTA_INDEX_BATCH:
@@ -344,7 +358,11 @@ class PipelineOrchestrator:
 
     def _execute_structure_extraction(self) -> Optional[Any]:
         """Execute PDF structure extraction step."""
-        return execute_structure_extraction(self.config, self.config.force_restructure, self.logger)
+        return execute_structure_extraction(self.config, self.config.force_restructure, None, self.logger)
+
+    def _execute_kode_wilayah_extraction(self) -> Optional[Any]:
+        """Execute kode wilayah extraction step."""
+        return execute_kode_wilayah_extraction(self.config, self.logger)
 
     def _execute_province_index_extraction(self) -> Optional[Any]:
         """Execute province index extraction step."""

@@ -9,9 +9,10 @@ Pipeline:
 2. Convert images to searchable PDF
 3. Perform OCR on specified page ranges
 4. Extract and clean table data
-5. Save results as Parquet file
+5. Save results as CSV, JSON, and Parquet files
 """
 
+import logging
 import os
 from io import StringIO
 
@@ -24,8 +25,11 @@ from marker.output import text_from_rendered
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
 from utils.normalize import kode_wilayah
 from utils.paths import (
+    get_csv_output_path,
     get_datas_dir,
+    get_json_output_path,
     get_parquet_output_path,
+    sanitize_folder_file_name,
 )
 
 # Configuration
@@ -61,9 +65,12 @@ class KodeWilayahOCR:
             artifact_dict=create_model_dict(),
         )
 
-    def extract_kode_wilayah(self) -> TableKodeWilayah:
+    def extract_kode_wilayah(self, logger=None) -> TableKodeWilayah:
         """
         Execute the complete kode wilayah extraction pipeline.
+
+        Args:
+            logger: Optional logger instance for logging progress
 
         Returns:
             TableKodeWilayah: Structured kode wilayah data
@@ -71,8 +78,11 @@ class KodeWilayahOCR:
         Raises:
             RuntimeError: If image download fails or PDF is not found
         """
+        if logger is None:
+            logger = logging.getLogger(__name__)
+
         # Download and prepare source images
-        print("Downloading SNI abbreviation images...")
+        logger.info("Downloading SNI abbreviation images...")
         success, failed_images = download_singkatan_images()
         if not success:
             raise RuntimeError(
@@ -89,14 +99,14 @@ class KodeWilayahOCR:
 
         # Perform OCR extraction
         display_pages = self._format_page_range_for_display()
-        print(f"Performing OCR on {pdf_path} (pages {display_pages})...")
+        logger.info(f"Performing OCR on {pdf_path} (pages {display_pages})...")
 
         rendered = self.converter(pdf_path)
         text, _, _ = text_from_rendered(rendered)
 
         # Process and clean extracted data
         cleaned_records = self._process_table_text(text)
-        self._save_results(cleaned_records)
+        self._save_results(cleaned_records, logger)
 
         return TableKodeWilayah(records=cleaned_records)
 
@@ -132,15 +142,33 @@ class KodeWilayahOCR:
         # Identify columns by content patterns
         column_map = self._identify_table_columns(df.columns)
 
+        # Initialize corrector
+        from utils.correction import CorrectionLoader
+        corrector = CorrectionLoader()
+
         # Extract and validate records
         cleaned_records = []
         for record in df.to_dicts():
+            nama_kota = str(record[column_map["nama_kota"]]).strip()
+            singkatan = str(record[column_map["singkatan"]]).strip()
+
+            # Apply corrections
+            # Debug logging
+            # print(f"Checking correction for: {repr(nama_kota)}")
+            corrected_nama_kota = corrector.get_correction(nama_kota, 'bsni')
+            if corrected_nama_kota:
+                # print(f"APPLYING CORRECTION: {nama_kota} -> {corrected_nama_kota}")
+                meta = corrector.get_metadata(nama_kota, 'bsni')
+                nama_kota = corrected_nama_kota
+                if meta and meta.get('singkatan'):
+                    singkatan = meta.get('singkatan')
+
             mapped_record = {
                 "no": record[column_map["no"]],
                 "provinsi": record[column_map["provinsi"]],
                 "kabupaten_kota": record[column_map["kabupaten"]],
-                "nama_kota": record[column_map["nama_kota"]],
-                "singkatan_nama_kota": record[column_map["singkatan"]],
+                "nama_kota": nama_kota,
+                "singkatan_nama_kota": singkatan,
                 "parent_subdivision": record[column_map["parent"]],
             }
 
@@ -169,17 +197,36 @@ class KodeWilayahOCR:
             "parent": next(col for col in columns if "Parent" in col),
         }
 
-    def _save_results(self, records: list[KodeWilayah]) -> None:
+    def _save_results(self, records: list[KodeWilayah], logger=None) -> None:
         """
-        Save extracted kode wilayah data as Parquet file.
+        Save extracted kode wilayah data as CSV, JSON, and Parquet files.
 
         Args:
             records: List of validated KodeWilayah objects
+            logger: Optional logger instance for logging progress
         """
-        df_clean = pl.DataFrame([r.model_dump() for r in records])
-        df_clean.write_parquet(get_parquet_output_path("kode_wilayah.parquet"))
+        if logger is None:
+            logger = logging.getLogger(__name__)
 
-        print(f"Kode wilayah data saved successfully: {len(records)} records in parquet format.")
+        df_clean = pl.DataFrame([r.model_dump() for r in records])
+
+        # Use sanitized filename base
+        filename_base = sanitize_folder_file_name("kode_wilayah")
+
+        # Save CSV
+        csv_path = get_csv_output_path(f"{filename_base}.csv", ensure_dir=True)
+        df_clean.write_csv(csv_path)
+        logger.info(f"Saved {len(records)} kode wilayah records to CSV: {csv_path}")
+
+        # Save JSON
+        json_path = get_json_output_path(f"{filename_base}.json", ensure_dir=True)
+        df_clean.write_json(json_path)
+        logger.info(f"Saved {len(records)} kode wilayah records to JSON: {json_path}")
+
+        # Save Parquet
+        parquet_path = get_parquet_output_path(f"{filename_base}.parquet", ensure_dir=True)
+        df_clean.write_parquet(parquet_path)
+        logger.info(f"Saved {len(records)} kode wilayah records to Parquet: {parquet_path}")
 
 
 # For backward compatibility, if run as script

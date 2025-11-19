@@ -49,9 +49,12 @@ class PDFStructureExtractor:
         # Suppress PDF warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="pypdf")
 
-    def extract_structure(self) -> AdministrativeStructure:
+    def extract_structure(self, cache_metadata=None) -> AdministrativeStructure:
         """
         Extract administrative structure from the PDF file.
+
+        Args:
+            cache_metadata: Optional cache metadata to include in the structure
 
         Returns:
             dict: Administrative structure with index, page_range, and provinces
@@ -77,7 +80,7 @@ class PDFStructureExtractor:
                     progress_ctx.advance(1)
                     continue
 
-        return self._finalize_structure()
+        return self._finalize_structure(cache_metadata)
 
     def _process_single_page(self, page, page_num: int) -> None:
         """
@@ -247,9 +250,12 @@ class PDFStructureExtractor:
 
                     self.current_province.details.append(detail_entry)
 
-    def _finalize_structure(self) -> AdministrativeStructure:
+    def _finalize_structure(self, cache_metadata=None) -> AdministrativeStructure:
         """
         Finalize the administrative structure and return the result.
+
+        Args:
+            cache_metadata: Optional cache metadata to include in the structure
 
         Returns:
             dict: Finalized administrative structure with consistent format
@@ -315,6 +321,7 @@ class PDFStructureExtractor:
         # Wrap in parent structure
         parent_structure = AdministrativeStructure(
             name="Provinsi",
+            table_format="provinsi_index",
             page_range=PageRange(
                 start=(
                     self.document_index_page + 1
@@ -324,7 +331,7 @@ class PDFStructureExtractor:
                 end=parent_end,
             ),
             provinces=self.administrative_structure,
-            table_format="provinsi_index",
+            cache_metadata=cache_metadata,
         )
 
         return parent_structure

@@ -1,6 +1,8 @@
 import os
 from typing import Optional, Any
 
+import polars as pl
+
 from batch_processor import BatchProcessor, _extract_single_province_kecamatan
 from utils.paths import get_json_output_path
 from utils.structure_utils import kecamatan_index_struct
@@ -11,6 +13,7 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     if logger is None:
         import logging
         logger = logging.getLogger(__name__)
+
 
     pdf_path = config.main_pdf
     structure_path = get_json_output_path("structure_pdf.json")
@@ -59,6 +62,28 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     if failed:
         for result in failed:
             logger.error(f"Failed province {result['province_name']}: {result['error']}")
+
+    # Collect and log unique unmatched ibukota_kabupaten_kota names with their kabupaten_kota
+    all_unmatched = {}  # ibukota -> kabupaten_kota
+    for result in successful:
+        unmatched_names = result.get('unmatched_names', [])
+        for ibukota, kabupaten_kota in unmatched_names:
+            all_unmatched[ibukota] = kabupaten_kota
+
+    if all_unmatched:
+        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "unmatched_k_bsni.log")
+
+        # Ensure the log directory exists
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+        # Write back the complete unique list
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write(f"Batch processing completed - {len(all_unmatched)} unique unmatched ibukota_kabupaten_kota names across all provinces:\n")
+            for name in sorted(all_unmatched.keys()):
+                kabupaten = all_unmatched[name]
+                f.write(f"  - {name} - {kabupaten}\n")
+            f.write("\n")
+        logger.info(f"Logged {len(all_unmatched)} unique unmatched ibukota_kabupaten_kota names with kabupaten_kota mapping")
 
     return type('Result', (), {
         'success': len(failed) == 0,

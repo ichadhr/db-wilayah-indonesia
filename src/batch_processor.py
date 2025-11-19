@@ -641,7 +641,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
 
     try:
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index = table_extractor.kecamatan_index(
+        kecamatan_index, unmatched_names = table_extractor.kecamatan_index(
             start_page=index_start, end_page=index_end, show_progress=False
         )
 
@@ -651,6 +651,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
                 "success": True,
                 "records": len(kecamatan_index),
                 "time": extraction_time,
+                "unmatched_names": unmatched_names,
             }
         )
 

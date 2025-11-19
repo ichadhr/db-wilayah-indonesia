@@ -5,15 +5,15 @@ Downloads SNI (Standar Nasional Indonesia) abbreviation images from bsn.go.id
 and converts them to PDF format for OCR processing.
 
 Key Features:
-- Intelligent retry logic based on error types (network vs server errors)
-- Full process re-run strategy for failed downloads
+- Multiple retry loops: up to 5 attempts with 3-second waits between retries
+- Each retry loop only attempts currently failed images
 - Comprehensive error reporting and validation
 - Progress tracking and rate limiting
 """
 
 import os
 import time
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import img2pdf
 import requests
@@ -24,9 +24,6 @@ from utils.progress import progress_manager
 # Configuration
 SNI_DOC_ID = "SNI_7657-2023"
 DOWNLOAD_DELAY = 1.0  # seconds between downloads
-RETRY_DELAY = 1.0     # seconds between retries
-MAX_NETWORK_RETRIES = 5  # Network errors: more tolerant
-MAX_SERVER_RETRIES = 3   # Server errors: less tolerant
 
 
 def validate_image(filepath: str) -> bool:
@@ -48,62 +45,17 @@ def validate_image(filepath: str) -> bool:
         return False
 
 
-def classify_error(error: Exception, response: Optional[requests.Response] = None) -> str:
-    """
-    Classify the type of error that occurred during download.
-
-    Args:
-        error: The exception that occurred
-        response: The HTTP response (if available)
-
-    Returns:
-        Error classification: 'network', 'server', or 'unknown'
-    """
-    if response is not None:
-        # HTTP status code indicates server error
-        if 400 <= response.status_code < 600:
-            return 'server'
-
-    # Check exception types for network errors
-    if isinstance(error, (requests.ConnectionError, requests.Timeout, requests.TooManyRedirects)):
-        return 'network'
-
-    # DNS resolution failures
-    if isinstance(error, requests.RequestException):
-        error_msg = str(error).lower()
-        if any(keyword in error_msg for keyword in ['name resolution', 'dns', 'connection', 'timeout']):
-            return 'network'
-
-    return 'unknown'
-
-
-def should_retry_error(error_type: str, current_attempt: int) -> bool:
-    """
-    Determine if an error should be retried based on its type and current attempt count.
-
-    Args:
-        error_type: The classified error type ('network', 'server', 'unknown')
-        current_attempt: Current attempt number (0-based)
-
-    Returns:
-        True if the error should be retried, False otherwise
-    """
-    if error_type == 'network':
-        return current_attempt < MAX_NETWORK_RETRIES
-    elif error_type == 'server':
-        return current_attempt < MAX_SERVER_RETRIES
-    else:
-        # Unknown errors get minimal retries
-        return current_attempt < 1
 
 
 def download_singkatan_images() -> Tuple[bool, List[str]]:
     """
-    Download all 45 SNI abbreviation images with intelligent retry logic.
+    Download all 45 SNI abbreviation images with multiple retry loops.
 
-    This function implements a full-process retry strategy where failed downloads
-    trigger a complete re-run of the entire download process, allowing previously
-    failed images another chance to download.
+    First pass: Download all images.
+    If any failed, wait 3 seconds and retry failed images.
+    If still any failed, wait 3 seconds and retry again.
+    Continue up to max 5 loops total.
+    Each retry loop only attempts the currently failed images.
 
     Returns:
         Tuple[bool, List[str]]: (success, failed_images)
@@ -118,7 +70,7 @@ def download_singkatan_images() -> Tuple[bool, List[str]]:
     print(f"Downloading SNI images to: {images_dir}")
     os.makedirs(images_dir, exist_ok=True)
 
-    # Execute download process with full retries
+    # Execute download process with two-pass retry logic
     success, failed_images = _execute_download_process(base_url, images_dir)
 
     # Convert to PDF if download succeeded
@@ -132,7 +84,12 @@ def download_singkatan_images() -> Tuple[bool, List[str]]:
 
 def _execute_download_process(base_url: str, images_dir: str) -> Tuple[bool, List[str]]:
     """
-    Execute the complete download process with full-process retry logic.
+    Execute the download process with multiple retry loops:
+    1. First pass: Download all images
+    2. If any failed, wait 3 seconds and retry failed images
+    3. If still any failed, wait 3 seconds and retry again
+    4. Continue up to max 5 loops total
+    5. Each retry loop only attempts the currently failed images
 
     Args:
         base_url: Base URL for image downloads
@@ -141,81 +98,61 @@ def _execute_download_process(base_url: str, images_dir: str) -> Tuple[bool, Lis
     Returns:
         Tuple[bool, List[str]]: (all_succeeded, failed_images)
     """
-    failed_images: List[str] = []
-    max_process_attempts = 5
+    max_retries = 5
+    failed_images = []
 
-    for process_attempt in range(max_process_attempts):
-        attempt_num = process_attempt + 1
+    for attempt in range(max_retries):
+        if attempt == 0:
+            # First pass: download all images
+            print("Starting first pass: downloading all images...")
+            images_to_download = [f"{i}.jpg" for i in range(1, 46)]
+            description = "Downloading images (first pass)"
+        else:
+            # Subsequent passes: retry only failed images
+            if not failed_images:
+                break  # No more failures, success
+            print(f"\nRetry loop {attempt}: waiting 3 seconds then retrying {len(failed_images)} failed images...")
+            time.sleep(3)
+            images_to_download = failed_images.copy()
+            description = f"Retrying failed images (attempt {attempt})"
 
-        if process_attempt > 0:
-            print(f"\nRetrying complete download process (attempt {attempt_num}/{max_process_attempts})")
-            failed_images = []  # Reset for new attempt
+        failed_images = []  # Reset for this attempt
 
-        # Download all images in this attempt
-        attempt_failed = _download_all_images_in_attempt(
-            base_url, images_dir, attempt_num, failed_images
-        )
+        with progress_manager.download_progress(
+            total_items=len(images_to_download), description=description
+        ) as progress_ctx:
+            for filename in images_to_download:
+                filepath = os.path.join(images_dir, filename)
 
-        # Check success
-        if not attempt_failed:
-            print("All images downloaded successfully!")
+                # Skip already downloaded valid images (only for first pass)
+                if attempt == 0 and os.path.exists(filepath) and validate_image(filepath):
+                    progress_ctx.advance(1)
+                    continue
+
+                # Attempt download
+                success = _download_single_image(base_url, filename, filepath)
+                progress_ctx.advance(1)
+
+                if not success:
+                    failed_images.append(filename)
+
+                # Rate limiting
+                time.sleep(DOWNLOAD_DELAY)
+
+        if not failed_images:
+            print(f"All images downloaded successfully in {'first pass' if attempt == 0 else f'retry loop {attempt}'}!")
             return True, []
 
-        # Prepare for next attempt or give up
-        if attempt_num < max_process_attempts:
-            print(f"Failed to download {len(failed_images)} images: {', '.join(failed_images)}")
-            print(f"Will retry entire process in {RETRY_DELAY} seconds...")
-            time.sleep(RETRY_DELAY)
-        else:
-            print(f"Failed to download images after {max_process_attempts} complete attempts")
-            print(f"Permanently failed images: {', '.join(failed_images)}")
-
+    # If we get here, all retries exhausted
+    print(f"Failed to download {len(failed_images)} images after {max_retries} attempts: {', '.join(failed_images)}")
     return False, failed_images
 
 
-def _download_all_images_in_attempt(
-    base_url: str, images_dir: str, attempt_num: int, failed_images: List[str]
-) -> bool:
+
+
+def _download_single_image(base_url: str, filename: str, filepath: str) -> bool:
     """
-    Download all 45 images in a single attempt.
-
-    Returns:
-        True if any images failed (need to retry process), False if all succeeded
-    """
-    has_failures = False
-
-    with progress_manager.download_progress(
-        total_items=45, description=f"Downloading images (attempt {attempt_num})"
-    ) as progress_ctx:
-        for i in range(1, 46):
-            filename = f"{i}.jpg"
-            filepath = os.path.join(images_dir, filename)
-
-            # Skip already downloaded valid images
-            if os.path.exists(filepath) and validate_image(filepath):
-                progress_ctx.advance(1)
-                continue
-
-            # Attempt download
-            success = _download_single_image_with_retry(base_url, filename, filepath)
-            progress_ctx.advance(1)
-
-            if not success:
-                failed_images.append(filename)
-                has_failures = True
-
-            # Rate limiting
-            time.sleep(DOWNLOAD_DELAY)
-
-    return has_failures
-
-
-def _download_single_image_with_retry(base_url: str, filename: str, filepath: str) -> bool:
-    """
-    Download a single image with intelligent retry logic based on error classification.
-
-    Network errors (connection issues, timeouts) get up to 5 retries.
-    Server errors (4xx/5xx HTTP codes) get up to 3 retries.
+    Download a single image.
 
     Args:
         base_url: Base URL for downloads
@@ -226,36 +163,19 @@ def _download_single_image_with_retry(base_url: str, filename: str, filepath: st
         True if download and validation succeeded, False otherwise
     """
     url = f"{base_url}{filename}"
-    attempt = 0
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
 
-    while True:
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
+        # Save the file
+        with open(filepath, "wb") as f:
+            f.write(response.content)
 
-            # Save the file
-            with open(filepath, "wb") as f:
-                f.write(response.content)
-
-            # Validate the downloaded image
-            if validate_image(filepath):
-                return True  # Success
-            else:
-                error_type = 'validation'
-                error_msg = f"Downloaded {filename} is invalid (corrupted file)"
-
-        except requests.RequestException as e:
-            error_type = classify_error(e, getattr(e, 'response', None))
-            error_msg = str(e)
-
-        # Check if we should retry this error
-        if should_retry_error(error_type, attempt):
-            attempt += 1
-            print(f"Failed to download {filename} ({error_type} error, attempt {attempt}): {error_msg}")
-            time.sleep(RETRY_DELAY)
-            continue
+        # Validate the downloaded image
+        if validate_image(filepath):
+            return True  # Success
         else:
-            print(f"Giving up on {filename} after {attempt + 1} attempts ({error_type} error): {error_msg}")
+            print(f"Downloaded {filename} is invalid (corrupted file)")
             # Clean up failed download
             if os.path.exists(filepath):
                 try:
@@ -263,6 +183,10 @@ def _download_single_image_with_retry(base_url: str, filename: str, filepath: st
                 except OSError:
                     pass  # Ignore cleanup errors
             return False
+
+    except requests.RequestException as e:
+        print(f"Failed to download {filename}: {e}")
+        return False
 
 
 def _convert_images_to_pdf(images_dir: str) -> bool:

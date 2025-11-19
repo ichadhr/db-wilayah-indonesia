@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 from dotenv import load_dotenv
@@ -16,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 def main():
     """Main entry point for the data pipeline."""
+    parser = argparse.ArgumentParser(description="Run the data pipeline.")
+    parser.add_argument(
+        "--kecamatan-only",
+        action="store_true",
+        help="Run only the kecamatan index batch step for testing"
+    )
+    args = parser.parse_args()
+
     # Create pipeline configuration from settings
     config = PipelineConfig(
         main_pdf=settings.pipeline.main_pdf,
@@ -31,15 +40,28 @@ def main():
     # Ensure output directories exist
     ensure_output_dirs()
 
-    # Create and execute pipeline
+    # Create orchestrator
     orchestrator = PipelineOrchestrator(config)
-    success = orchestrator.execute_pipeline()
 
-    if not success:
-        logger.error("Pipeline execution failed")
-        exit(1)
+    if args.kecamatan_only:
+        # Run only the kecamatan batch step
+        logger.info("Running kecamatan index batch step only")
+        result = orchestrator._execute_kecamatan_batch()
+        if result and result.success:
+            logger.info("Kecamatan index batch completed successfully")
+        else:
+            error_msg = result.error_message if result else "Unknown error"
+            logger.error(f"Kecamatan index batch failed: {error_msg}")
+            exit(1)
     else:
-        logger.info("Pipeline execution completed successfully")
+        # Execute full pipeline
+        success = orchestrator.execute_pipeline()
+
+        if not success:
+            logger.error("Pipeline execution failed")
+            exit(1)
+        else:
+            logger.info("Pipeline execution completed successfully")
 
 
 if __name__ == "__main__":

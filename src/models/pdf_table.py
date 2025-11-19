@@ -5,6 +5,7 @@ class ProvinceIndexData(BaseModel):
     no: int
     kode: str
     provinsi: str
+    p_bsni: str
     jumlah_kabupaten: int
     jumlah_kota: int
     jumlah_kecamatan: int
@@ -44,7 +45,7 @@ class ProvinceIndexData(BaseModel):
             return 0.0
         return float(format_luas(v))
 
-    @field_validator("kode", "provinsi", mode="before")
+    @field_validator("kode", "provinsi", "p_bsni", mode="before")
     @classmethod
     def validate_str_fields(cls, v):
         return str(v) if v else ""
@@ -105,6 +106,7 @@ class DistrictIndexData(BaseModel):
     ibukota_kabupaten_kota: str
     kode_kecamatan: str
     kecamatan: str
+    k_bsni: str
     jumlah_kabupaten: int
     jumlah_kota: int
     jumlah_kecamatan: int

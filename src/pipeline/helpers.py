@@ -184,7 +184,7 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
         index_end = district_row[5]  # end_page column
 
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index = table_extractor.kecamatan_index(
+        kecamatan_index, _ = table_extractor.kecamatan_index(
             start_page=index_start, end_page=index_end, show_progress=False
         )
 

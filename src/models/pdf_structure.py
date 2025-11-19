@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -37,8 +38,15 @@ class Province(BaseModel):
     details: List[Detail]
 
 
+class PDFCacheMetadata(BaseModel):
+    """Metadata for PDF file caching and validation."""
+    pdf_size: int
+    pdf_hash: str
+
+
 class AdministrativeStructure(BaseModel):
     name: str
     table_format: str
     page_range: PageRange
     provinces: List[Province]
+    cache_metadata: Optional[PDFCacheMetadata] = None
