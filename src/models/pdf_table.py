@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from utils.converter import format_luas, format_number, format_pulau, format_text, normalize_kabupaten_kota, normalize_ibukota_kabupaten_kota, normalize_kecamatan
+from utils.text_utils import format_luas, format_number, format_pulau, format_text, normalize_kabupaten_kota, normalize_ibukota_kabupaten_kota, normalize_kecamatan
 
 class ProvinceIndexData(BaseModel):
     no: int

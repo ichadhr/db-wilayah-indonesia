@@ -20,7 +20,7 @@ from urllib.parse import quote
 # Import our utilities
 from utils.progress import progress_manager
 from utils.errors import error_handler, NetworkError
-from utils.converter import format_string
+from utils.text_utils import format_string
 
 
 def scrape_kodepos(search_term: str) -> List[Dict[str, str]]:

@@ -37,8 +37,8 @@ from .paths import (
 # Correction utilities
 from .correction import CorrectionLoader
 
-# Normalization utilities
-from .normalize import kode_wilayah
+# Text normalization and conversion utilities
+from .text_utils import kode_wilayah
 
 # Progress tracking
 from .progress import progress_manager

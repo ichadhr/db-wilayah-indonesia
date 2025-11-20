@@ -151,6 +151,7 @@ class KodeWilayahOCR:
         for record in df.to_dicts():
             nama_kota = str(record[column_map["nama_kota"]]).strip()
             singkatan = str(record[column_map["singkatan"]]).strip()
+            kabupaten_kota = str(record[column_map["kabupaten"]]).strip()
 
             # Apply corrections
             # Debug logging
@@ -162,11 +163,14 @@ class KodeWilayahOCR:
                 nama_kota = corrected_nama_kota
                 if meta and meta.get('singkatan'):
                     singkatan = meta.get('singkatan')
+                # Also update kabupaten_kota if specified in metadata
+                if meta and meta.get('kabupaten_kota'):
+                    kabupaten_kota = meta.get('kabupaten_kota')
 
             mapped_record = {
                 "no": record[column_map["no"]],
                 "provinsi": record[column_map["provinsi"]],
-                "kabupaten_kota": record[column_map["kabupaten"]],
+                "kabupaten_kota": kabupaten_kota,
                 "nama_kota": nama_kota,
                 "singkatan_nama_kota": singkatan,
                 "parent_subdivision": record[column_map["parent"]],

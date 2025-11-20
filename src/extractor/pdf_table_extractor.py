@@ -6,7 +6,7 @@ import pdfplumber
 import polars as pl
 from models.pdf_table import ProvinceIndexData, RegencyIndexData, DistrictIndexData, DetailsData
 from utils.progress import progress_manager
-from utils.converter import normalize_ibukota_kabupaten_kota
+from utils.text_utils import normalize_ibukota_kabupaten_kota, normalize_kabupaten_kota
 
 
 def get_p_bsni_mapping() -> dict[str, str]:
@@ -604,49 +604,64 @@ class PDFTableExtractor(PDFTableExtractorBase):
 
             # Prepare kode_wilayah for join - create normalized key
             df_kode_wilayah_join = df_kode_wilayah.with_columns(
-                normalized_nama_kota=(
-                    pl.col("nama_kota")
-                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
+                join_key=pl.struct(["kabupaten_kota", "nama_kota"]).map_elements(
+                    lambda x: (
+                        normalize_kabupaten_kota(x["kabupaten_kota"] or "").replace(" ", "").lower() + 
+                        re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["nama_kota"] or ""), flags=re.IGNORECASE).replace(" ", "").lower()
+                    ),
+                    return_dtype=pl.Utf8
                 )
             )
 
             # Prepare districts for join
-            districts_join = districts_with_ibukota.with_columns(
-                normalized_ibukota=(
-                    pl.col("ibukota_kabupaten_kota")
-                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
-                )
-            )
+            districts_join = districts_with_ibukota
 
             # Apply corrections to normalized_ibukota using CorrectionLoader
             from utils.correction import CorrectionLoader
             corrector = CorrectionLoader()
             
-            # We need to apply corrections to the original ibukota first, then re-normalize
-            # Or apply to the normalized key if the correction map supports it.
-            # The plan says: apply corrections to ibukota_kabupaten_kota *before* the join.
-            # So let's correct the 'ibukota_kabupaten_kota' column first.
-            
-            def apply_kecamatan_correction(val):
+            def apply_kecamatan_correction(struct_val):
+                val = struct_val["ibukota"]
+                kab_kota = struct_val["kabupaten"]
+                
                 if not val: return val
+                
                 corrected = corrector.get_correction(val, 'kecamatan_index')
+                if corrected:
+                    # Check metadata for scope constraints
+                    meta = corrector.get_metadata(val, 'kecamatan_index')
+                    if meta:
+                        target_kab = meta.get('kabupaten_kota')
+                        # If target_kab is defined, it MUST match the current kabupaten_kota
+                        # We normalize both for comparison to be safe
+                        if target_kab:
+                            norm_target = normalize_kabupaten_kota(target_kab).replace(" ", "").lower()
+                            norm_current = normalize_kabupaten_kota(kab_kota or "").replace(" ", "").lower()
+                            if norm_target != norm_current:
+                                return val # Skip correction if context doesn't match
+                
                 return corrected if corrected else val
 
             districts_join = districts_join.with_columns(
-                ibukota_kabupaten_kota=pl.col("ibukota_kabupaten_kota").map_elements(apply_kecamatan_correction, return_dtype=pl.Utf8)
+                ibukota_kabupaten_kota=pl.struct([
+                    pl.col("ibukota_kabupaten_kota").alias("ibukota"),
+                    pl.col("kabupaten_kota").alias("kabupaten")
+                ]).map_elements(apply_kecamatan_correction, return_dtype=pl.Utf8)
             ).with_columns(
-                # Re-calculate normalized_ibukota after correction
-                normalized_ibukota=(
-                    pl.col("ibukota_kabupaten_kota")
-                    .map_elements(lambda x: re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x or ""), flags=re.IGNORECASE).replace(" ", "").lower(), return_dtype=pl.Utf8)
+                # Calculate join_key after correction
+                join_key=pl.struct(["kabupaten_kota", "ibukota_kabupaten_kota"]).map_elements(
+                    lambda x: (
+                        normalize_kabupaten_kota(x["kabupaten_kota"] or "").replace(" ", "").lower() + 
+                        re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["ibukota_kabupaten_kota"] or ""), flags=re.IGNORECASE).replace(" ", "").lower()
+                    ),
+                    return_dtype=pl.Utf8
                 )
             )
 
             # Perform join
             joined = districts_join.join(
                 df_kode_wilayah_join,
-                left_on="normalized_ibukota",
-                right_on="normalized_nama_kota",
+                on="join_key",
                 how="left"
             )
 
@@ -659,15 +674,48 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 expanded_name = normalize_ibukota_kabupaten_kota(row["ibukota_kabupaten_kota"])
                 unmatched_names.append((expanded_name, row["kabupaten_kota"]))
 
-            # Identify unmapped BSNI records (BSNI entries not referenced by any district)
-            unmapped_bsni = []
+            # Update the original dataframe with matched k_bsni values AND corrected ibukota
             if len(matched) > 0:
-                # Get all unique BSNI cities that were matched
-                matched_bsni_codes = matched.select("singkatan_nama_kota").unique()
+                # We want to update 'k_bsni' AND 'ibukota_kabupaten_kota'
+                # The 'matched' dataframe comes from 'joined', which has the CORRECTED 'ibukota_kabupaten_kota'
+                # So we select it from there.
+                matched_updates = matched.select(["kode_kecamatan", "singkatan_nama_kota", "ibukota_kabupaten_kota"])
                 
-                # Find BSNI entries that were never matched
-                unmapped_bsni_df = df_kode_wilayah.filter(
-                    ~pl.col("singkatan_nama_kota").is_in(matched_bsni_codes.to_series())
+                df_district = df_district.join(
+                    matched_updates,
+                    on="kode_kecamatan",
+                    how="left"
+                ).with_columns(
+                    k_bsni=pl.when(pl.col("singkatan_nama_kota").is_not_null())
+                           .then(pl.col("singkatan_nama_kota"))
+                           .otherwise(pl.col("k_bsni")),
+                    # Update ibukota_kabupaten_kota if we found a match (which implies we might have corrected it)
+                    # Note: matched_updates has column "ibukota_kabupaten_kota" (the corrected one)
+                    # We need to disambiguate because join might create suffix
+                    ibukota_kabupaten_kota=pl.when(pl.col("singkatan_nama_kota").is_not_null())
+                                           .then(pl.col("ibukota_kabupaten_kota_right"))
+                                           .otherwise(pl.col("ibukota_kabupaten_kota"))
+                ).drop(["singkatan_nama_kota", "ibukota_kabupaten_kota_right"])
+
+            # Identify unmapped BSNI records using anti-join
+            # Find BSNI cities in this province that are NOT used by any district
+            unmapped_bsni = []
+            if len(districts_with_ibukota) > 0:
+                # Get current province name
+                current_province = districts_with_ibukota.select("provinsi").unique().to_series()[0]
+                
+                # Filter BSNI to current province only
+                province_bsni = df_kode_wilayah.filter(pl.col("provinsi") == current_province)
+                
+                # Get unique k_bsni codes that were actually used
+                used_bsni = df_district.filter(pl.col("k_bsni").is_not_null()).select("k_bsni").unique()
+                
+                # Anti-join: find BSNI codes NOT in used k_bsni
+                unmapped_bsni_df = province_bsni.join(
+                    used_bsni,
+                    left_on="singkatan_nama_kota",
+                    right_on="k_bsni",
+                    how="anti"
                 )
                 
                 # Collect unmapped BSNI entries
@@ -678,19 +726,6 @@ class PDFTableExtractor(PDFTableExtractorBase):
                         "kabupaten_kota": row.get("kabupaten_kota", ""),
                         "provinsi": row.get("provinsi", "")
                     })
-
-            # Update the original dataframe with matched k_bsni values
-            if len(matched) > 0:
-                matched_updates = matched.select(["kode_kecamatan", "singkatan_nama_kota"])
-                df_district = df_district.join(
-                    matched_updates,
-                    on="kode_kecamatan",
-                    how="left"
-                ).with_columns(
-                    k_bsni=pl.when(pl.col("singkatan_nama_kota").is_not_null())
-                           .then(pl.col("singkatan_nama_kota"))
-                           .otherwise(pl.col("k_bsni"))
-                ).drop("singkatan_nama_kota")
 
         return df_district, unmatched_names, unmapped_bsni
 
