@@ -1,9 +1,91 @@
+import json
 import os
+import time
 from typing import Optional, Any
 
-from ..batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota
-from utils.paths import get_json_output_path
+from ..batch_processor import BatchProcessor, _validate_kabupaten_kota_data
+from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
 from utils.structure_utils import kabupaten_kota_index_struct
+
+
+def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[dict, list[str]]:
+    """Extract data for a single province (kabupaten/kota tables)."""
+
+    province_name = row["province_name"]
+    index_name = row["name"]
+    index_table_format = row["table_format"]
+    index_start = row["start_page"]
+    index_end = row["end_page"]
+
+    start_time = time.time()
+    result = {
+        "province_name": province_name,
+        "success": False,
+        "records": None,
+        "time": None,
+        "error": None,
+        "page_range": (index_start, index_end),
+        "files": [],
+    }
+
+    log_messages = []
+
+    try:
+        table_extractor = PDFTableExtractor(file_path)
+        kabupaten_kota_index = table_extractor.kabupaten_kota_index(
+            start_page=index_start, end_page=index_end, show_progress=False
+        )
+
+        extraction_time = time.time() - start_time
+        result.update(
+            {
+                "success": True,
+                "records": len(kabupaten_kota_index),
+                "time": extraction_time,
+            }
+        )
+
+        # Save table data using Polars native methods
+        folder_name_base = sanitize_folder_file_name(province_name)
+        filename_base = sanitize_folder_file_name(index_name)
+        path_base = os.path.join(folder_name_base, filename_base)
+        json_debug_base = os.path.join(
+            "debug", folder_name_base, filename_base
+        )
+
+        # Parquet (efficient storage)
+        parquet_path = get_parquet_output_path(f"{path_base}.parquet", ensure_dir=True)
+        kabupaten_kota_index.write_parquet(parquet_path)
+        log_messages.append(f"INFO: Saved Parquet for {province_name}: {parquet_path}")
+        result["files"].append(parquet_path)
+
+        # Validate extracted data
+        validation_errors = _validate_kabupaten_kota_data(kabupaten_kota_index, province_name)
+
+        # Debug JSON (metadata + sample data)
+        debug_data = {
+            "name": index_name,
+            "page_range": {"start": index_start, "end": index_end},
+            "table_format": index_table_format,
+            "row_count": len(kabupaten_kota_index),
+            "columns": kabupaten_kota_index.columns,
+            "sample_data": kabupaten_kota_index.head(3).to_dicts(),
+            "extraction_time_seconds": extraction_time,
+            "validation_errors": validation_errors,
+        }
+        debug_path = get_json_output_path(f"{json_debug_base}.json", ensure_dir=True)
+        with open(debug_path, "w", encoding="utf-8") as f:
+            json.dump(debug_data, f, ensure_ascii=False, indent=2)
+        log_messages.append(f"INFO: Saved debug JSON for {province_name}: {debug_path}")
+        result["files"].append(debug_path)
+
+    except Exception as e:
+        extraction_time = time.time() - start_time
+        result.update({"time": extraction_time, "error": str(e)})
+        log_messages.append(f"ERROR: Failed to extract {province_name}: {e}")
+
+    return result, log_messages
 
 
 def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:

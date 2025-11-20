@@ -3,7 +3,6 @@ from typing import Optional, Any
 
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from utils.paths import (
-    get_csv_output_path,
     get_json_output_path,
     get_parquet_output_path,
     sanitize_folder_file_name
@@ -39,20 +38,12 @@ def execute_kode_wilayah_extraction(config, logger=None) -> Optional[Any]:
     filename_base = sanitize_folder_file_name("kode_wilayah")
     files_generated = []
 
-    # CSV
-    csv_path = get_csv_output_path(f"{filename_base}.csv", ensure_dir=True)
-    df_clean.write_csv(csv_path)
-    files_generated.append(csv_path)
 
     # Parquet
     parquet_path = get_parquet_output_path(f"{filename_base}.parquet", ensure_dir=True)
     df_clean.write_parquet(parquet_path)
     files_generated.append(parquet_path)
 
-    # JSON
-    json_path = get_json_output_path(f"{filename_base}.json", ensure_dir=True)
-    df_clean.write_json(json_path)
-    files_generated.append(json_path)
 
     # Debug JSON
     debug_data = {

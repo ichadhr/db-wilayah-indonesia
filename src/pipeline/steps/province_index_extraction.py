@@ -4,7 +4,6 @@ from typing import Optional, Any
 
 from extractor.pdf_table_extractor import PDFTableExtractor
 from utils.paths import (
-    get_csv_output_path,
     get_json_output_path,
     get_parquet_output_path,
     sanitize_folder_file_name
@@ -53,20 +52,10 @@ def execute_province_index_extraction(config, logger=None) -> Optional[Any]:
     filename_base = sanitize_folder_file_name(index_name)
     files_generated = []
 
-    # CSV
-    csv_path = get_csv_output_path(f"{filename_base}.csv", ensure_dir=True)
-    provinsi_index_table.write_csv(csv_path)
-    files_generated.append(csv_path)
-
     # Parquet
     parquet_path = get_parquet_output_path(f"{filename_base}.parquet", ensure_dir=True)
     provinsi_index_table.write_parquet(parquet_path)
     files_generated.append(parquet_path)
-
-    # JSON
-    json_path = get_json_output_path(f"{filename_base}.json", ensure_dir=True)
-    provinsi_index_table.write_json(json_path)
-    files_generated.append(json_path)
 
     # Debug JSON
     debug_data = {

@@ -9,7 +9,7 @@ from datetime import datetime
 import time
 import os
 import logging
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from utils.paths import (
     get_csv_output_path,
@@ -271,7 +271,7 @@ class BatchProcessor:
 def _multiprocessing_worker(
         file_path: str,
         task: dict,
-        extraction_func: Callable[[str, dict], tuple[Dict, List[str]]]
+        extraction_func: Callable[[Any, dict], tuple[Dict, List[str]]]
 ) -> tuple[Dict, list[str]]:
     """Worker function for multiprocessing (module-level, can be pickled)."""
     # Check shutdown event at the start of worker
@@ -294,6 +294,15 @@ def _multiprocessing_worker(
             "province_name": task.get("province_name", "unknown"),
             "success": False,
             "error": "Task interrupted by KeyboardInterrupt",
+            "records": 0,
+            "time": 0.0,
+            "files": []
+        }, []
+    except Exception as e:
+         return {
+            "province_name": task.get("province_name", "unknown"),
+            "success": False,
+            "error": f"Worker error: {str(e)}",
             "records": 0,
             "time": 0.0,
             "files": []

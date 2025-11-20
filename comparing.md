@@ -11,7 +11,7 @@ This document tracks unmatched city names from kecamatan index processing agains
 - [Changelog](#changelog)
 
 ## Unmatched City Names
-These are the 27 unmatched entries from the latest batch processing run (referenced in [`src/output/log/unmatched_k_bsni.log`](src/output/log/unmatched_k_bsni.log)). They represent `ibukota_kabupaten_kota` names that failed to match after normalization.
+These are the 28 unmatched entries from the latest batch processing run (referenced in [`src/output/log/unmatched_k_bsni.log`](src/output/log/unmatched_k_bsni.log)). They represent `ibukota_kabupaten_kota` names that failed to match after normalization.
 
 | No. | Unmatched City Name | Kabupaten Kota |
 | --- | --- | --- |
@@ -30,22 +30,23 @@ These are the 27 unmatched entries from the latest batch processing run (referen
 | 13 | Mentok | Kabupaten Bangka Barat |
 | 14 | Morotai Selatan | Kabupaten Pulau Morotai |
 | 15 | Padangsidimpuan | Kota Padang Sidempuan |
-| 16 | Pangkajene Sidenreng | Kabupaten Pangkajene dan Kepulauan |
-| 17 | Parik Malintang | Kabupaten Padang Pariaman |
-| 18 | Pasir Pengarairan | Kabupaten Rokan Hulu |
-| 19 | Pelabuhan Ratu | Kabupaten Sukabumi |
-| 20 | Pelembang | Kota Palembang |
-| 21 | Pulau Seribu | Kabupaten Administrasi Kepulauan Seribu |
-| 22 | Sanggatta | Kabupaten Kutai Timur |
-| 23 | Singasana | Kabupaten Tabanan |
-| 24 | Sukadane | Kabupaten Kayong Utara |
-| 25 | Sunggu Minahasa | Kabupaten Gowa |
-| 26 | Taliabu Barat | Kabupaten Pulau Taliabu |
-| 27 | Wangi Wangi | Kabupaten Wakatobi |
+| 16 | Padang Sidempuan | Kabupaten Tapanuli Selatan |
+| 17 | Pangkajene Sidenreng | Kabupaten Pangkajene dan Kepulauan |
+| 18 | Parik Malintang | Kabupaten Padang Pariaman |
+| 19 | Pasir Pengarairan | Kabupaten Rokan Hulu |
+| 20 | Pelabuhan Ratu | Kabupaten Sukabumi |
+| 21 | Pelembang | Kota Palembang |
+| 22 | Pulau Seribu | Kabupaten Administrasi Kepulauan Seribu |
+| 23 | Sanggatta | Kabupaten Kutai Timur |
+| 24 | Singasana | Kabupaten Tabanan |
+| 25 | Sukadane | Kabupaten Kayong Utara |
+| 26 | Sunggu Minahasa | Kabupaten Gowa |
+| 27 | Taliabu Barat | Kabupaten Pulau Taliabu |
+| 28 | Wangi Wangi | Kabupaten Wakatobi |
 
 
 ## Corrected Ibukota Names
-These corrections are documented in [`src/utils/correction.csv`](src/utils/correction.csv) and address the unmatched entries above. Summary: 11 bsni fixes, 17 kecamatan_index fixes.
+These corrections are documented in [`src/utils/correction.csv`](src/utils/correction.csv) and address the unmatched entries above. Summary: 11 bsni fixes, 18 kecamatan_index fixes.
 
 | No. | City Name | singkatan_nama_kota | reason_k_bsni | Kabupaten Kota | Province | Fix Location | Notes |
 --- | --- | --- | --- | --- | --- | --- | --- |
@@ -58,24 +59,25 @@ These corrections are documented in [`src/utils/correction.csv`](src/utils/corre
 | 7 | Boroko | BRK | EXISTING CODE | Kabupaten Bolaang Mongondow Utara | Sulawesi Utara | bsni | Spelling error: "Baroko" should be "Boroko" |
 | 8 | Parik Malintang | PMT | RULE 4: P + M + T (2 words) | Kabupaten Padang Pariaman | Sumatra Barat | bsni | Wrong city name: "Nagari Parit Malintang" should be "Parik Malintang" (UU 47/2024) |
 | 9 | Padangsidimpuan | PSP | EXISTING CODE | Kota Padangsidimpuan | Sumatra Utara | kecamatan_index | Wrong city name: "Padang Sidempuan" should be "Padangsidimpuan" (UU 8/2023) |
-| 10 | Koto Tangah | KTT | RULE 4: K + T + T (2 words) | Kota Padang | Sumatra Barat | bsni, kecamatan_index | Wrong city name: BSNI shows "Padang", kecamatan_index shows "Kototangah" (typo), should be "Koto Tangah" |
-| 11 | Bireuen | BRE | EXISTING CODE | Kabupaten Bireuen | Aceh | kecamatan_index | Spelling error: "Bireun" should be "Bireuen" |
-| 12 | Kembangan | KBN | EXISTING CODE | Kota Administrasi Jakarta Barat | Daerah Khusus Ibukota Jakarta | kecamatan_index | Wrong city name: "Grogol Petamburan" should be "Kembangan" |
-| 13 | Pulau Pramuka | PPR | EXISTING CODE | Kabupaten Administrasi Kepulauan Seribu | Daerah Khusus Ibukota Jakarta | kecamatan_index | Wrong city name: "Pulau Seribu" should be "Pulau Pramuka" |
-| 14 | Palabuhanratu | PRT | EXISTING CODE | Kabupaten Sukabumi | Jawa Barat | kecamatan_index | Spelling error: "Pelabuhan Ratu" should be "Palabuhanratu" |
-| 15 | Sukadana | SDN | EXISTING CODE | Kabupaten Kayong Utara | Kalimantan Barat | kecamatan_index | Spelling error: "Sukadane" should be "Sukadana" |
-| 16 | Barabai | BRB | EXISTING CODE | Kabupaten Hulu Sungai Tengah | Kalimantan Selatan | kecamatan_index | Spelling error: "Berabai" should be "Barabai" |
-| 17 | Sangatta | SGT | EXISTING CODE | Kabupaten Kutai Timur | Kalimantan Timur | kecamatan_index | Spelling error: "Sanggatta" should be "Sangatta" |
-| 18 | Tidore | TDR | EXISTING CODE | Kota Tidore Kepulauan | Maluku Utara | kecamatan_index | Wrong city name: "Kota Tidore Kepulauan" should be "Tidore" |
-| 19 | Daruba | DRB | EXISTING CODE | Kabupaten Pulau Morotai | Maluku Utara | kecamatan_index | Wrong city name: "Morotai Selatan" should be "Daruba" |
-| 20 | Bobong | BBG | EXISTING CODE | Kabupaten Pulau Taliabu | Maluku Utara | kecamatan_index | Wrong city name: "Taliabu Barat" should be "Bobong" |
-| 21 | Kefamenanu | KFM | EXISTING CODE | Kabupaten Timor Tengah Utara | Nusa Tenggara Timur | kecamatan_index | Spelling error: "Kafemananu" should be "Kefamenanu" |
-| 22 | Betun | BET | EXISTING CODE | Kabupaten Malaka | Nusa Tenggara Timur | kecamatan_index | Wrong city name: "Malaka Tengah" should be "Betun" |
-| 23 | Pasir Pengaraian | PRP | EXISTING CODE | Kabupaten Rokan Hulu | Riau | kecamatan_index | Spelling error: "Pasir Pengarairan" should be "Pasir Pengaraian" |
-| 24 | Sungguminasa | SGM | EXISTING CODE | Kabupaten Gowa | Sulawesi Selatan | kecamatan_index | Spelling error: "Sunggu Minahasa" should be "Sungguminasa" |
-| 25 | Wangi-Wangi | WGI | EXISTING CODE | Kabupaten Wakatobi | Sulawesi Tenggara | kecamatan_index | Spelling error: "Wangi Wangi" should be "Wangi-Wangi" |
-| 26 | Melonguane | MGN | EXISTING CODE | Kabupaten Kepulauan Talaud | Sulawesi Utara | kecamatan_index | Spelling error: "Melongguane" should be "Melonguane" |
-| 27 | Palembang | PLG | EXISTING CODE | Kota Palembang | Sumatra Selatan | kecamatan_index | Spelling error: "Pelembang" should be "Palembang" |
+| 10 | Sipirok | SPR | EXISTING CODE | Kabupaten Tapanuli Selatan | Sumatra Utara | kecamatan_index | Wrong city name: "Padang Sidempuan" should be "Sipirok" |
+| 11 | Koto Tangah | KTT | RULE 4: K + T + T (2 words) | Kota Padang | Sumatra Barat | bsni, kecamatan_index | Wrong city name: BSNI shows "Padang", kecamatan_index shows "Kototangah" (typo), should be "Koto Tangah" |
+| 12 | Bireuen | BRE | EXISTING CODE | Kabupaten Bireuen | Aceh | kecamatan_index | Spelling error: "Bireun" should be "Bireuen" |
+| 13 | Kembangan | KBN | EXISTING CODE | Kota Administrasi Jakarta Barat | Daerah Khusus Ibukota Jakarta | kecamatan_index | Wrong city name: "Grogol Petamburan" should be "Kembangan" |
+| 14 | Pulau Pramuka | PPR | EXISTING CODE | Kabupaten Administrasi Kepulauan Seribu | Daerah Khusus Ibukota Jakarta | kecamatan_index | Wrong city name: "Pulau Seribu" should be "Pulau Pramuka" |
+| 15 | Palabuhanratu | PRT | EXISTING CODE | Kabupaten Sukabumi | Jawa Barat | kecamatan_index | Spelling error: "Pelabuhan Ratu" should be "Palabuhanratu" |
+| 16 | Sukadana | SDN | EXISTING CODE | Kabupaten Kayong Utara | Kalimantan Barat | kecamatan_index | Spelling error: "Sukadane" should be "Sukadana" |
+| 17 | Barabai | BRB | EXISTING CODE | Kabupaten Hulu Sungai Tengah | Kalimantan Selatan | kecamatan_index | Spelling error: "Berabai" should be "Barabai" |
+| 18 | Sangatta | SGT | EXISTING CODE | Kabupaten Kutai Timur | Kalimantan Timur | kecamatan_index | Spelling error: "Sanggatta" should be "Sangatta" |
+| 19 | Tidore | TDR | EXISTING CODE | Kota Tidore Kepulauan | Maluku Utara | kecamatan_index | Wrong city name: "Kota Tidore Kepulauan" should be "Tidore" |
+| 20 | Daruba | DRB | EXISTING CODE | Kabupaten Pulau Morotai | Maluku Utara | kecamatan_index | Wrong city name: "Morotai Selatan" should be "Daruba" |
+| 21 | Bobong | BBG | EXISTING CODE | Kabupaten Pulau Taliabu | Maluku Utara | kecamatan_index | Wrong city name: "Taliabu Barat" should be "Bobong" |
+| 22 | Kefamenanu | KFM | EXISTING CODE | Kabupaten Timor Tengah Utara | Nusa Tenggara Timur | kecamatan_index | Spelling error: "Kafemananu" should be "Kefamenanu" |
+| 23 | Betun | BET | EXISTING CODE | Kabupaten Malaka | Nusa Tenggara Timur | kecamatan_index | Wrong city name: "Malaka Tengah" should be "Betun" |
+| 24 | Pasir Pengaraian | PRP | EXISTING CODE | Kabupaten Rokan Hulu | Riau | kecamatan_index | Spelling error: "Pasir Pengarairan" should be "Pasir Pengaraian" |
+| 25 | Sungguminasa | SGM | EXISTING CODE | Kabupaten Gowa | Sulawesi Selatan | kecamatan_index | Spelling error: "Sunggu Minahasa" should be "Sungguminasa" |
+| 26 | Wangi-Wangi | WGI | EXISTING CODE | Kabupaten Wakatobi | Sulawesi Tenggara | kecamatan_index | Spelling error: "Wangi Wangi" should be "Wangi-Wangi" |
+| 27 | Melonguane | MGN | EXISTING CODE | Kabupaten Kepulauan Talaud | Sulawesi Utara | kecamatan_index | Spelling error: "Melongguane" should be "Melonguane" |
+| 28 | Palembang | PLG | EXISTING CODE | Kota Palembang | Sumatra Selatan | kecamatan_index | Spelling error: "Pelembang" should be "Palembang" |
 
 # CorrectionLoader Integration
 

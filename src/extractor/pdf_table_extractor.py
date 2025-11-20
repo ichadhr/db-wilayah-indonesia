@@ -384,7 +384,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         return pl.DataFrame([data.model_dump() for data in regency_index_data])
 
 
-    def kecamatan_index(self, start_page: int, end_page: int, show_progress: bool = True) -> tuple[pl.DataFrame, list]:
+    def kecamatan_index(self, start_page: int, end_page: int, show_progress: bool = True) -> tuple[pl.DataFrame, list, list]:
         """
         Extract district index table.
 
@@ -394,7 +394,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
             show_progress: Whether to display progress bar during extraction
 
         Returns:
-            Tuple of (Polars DataFrame with district data, list of unmatched ibukota names)
+            Tuple of (Polars DataFrame with district data, 
+                     list of unmatched ibukota names from PDF,
+                     list of unmapped BSNI cities)
         """
         # Use specific settings for district index tables
         kecamatan_index_settings = {} # empty config
@@ -652,10 +654,30 @@ class PDFTableExtractor(PDFTableExtractorBase):
             matched = joined.filter(pl.col("singkatan_nama_kota").is_not_null())
             unmatched = joined.filter(pl.col("singkatan_nama_kota").is_null())
 
-            # Collect unmatched names
+            # Collect unmatched names (PDF entries that didn't match BSNI)
             for row in unmatched.iter_rows(named=True):
                 expanded_name = normalize_ibukota_kabupaten_kota(row["ibukota_kabupaten_kota"])
                 unmatched_names.append((expanded_name, row["kabupaten_kota"]))
+
+            # Identify unmapped BSNI records (BSNI entries not referenced by any district)
+            unmapped_bsni = []
+            if len(matched) > 0:
+                # Get all unique BSNI cities that were matched
+                matched_bsni_codes = matched.select("singkatan_nama_kota").unique()
+                
+                # Find BSNI entries that were never matched
+                unmapped_bsni_df = df_kode_wilayah.filter(
+                    ~pl.col("singkatan_nama_kota").is_in(matched_bsni_codes.to_series())
+                )
+                
+                # Collect unmapped BSNI entries
+                for row in unmapped_bsni_df.iter_rows(named=True):
+                    unmapped_bsni.append({
+                        "singkatan": row.get("singkatan_nama_kota", ""),
+                        "nama_kota": row.get("nama_kota", ""),
+                        "kabupaten_kota": row.get("kabupaten_kota", ""),
+                        "provinsi": row.get("provinsi", "")
+                    })
 
             # Update the original dataframe with matched k_bsni values
             if len(matched) > 0:
@@ -670,7 +692,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                            .otherwise(pl.col("k_bsni"))
                 ).drop("singkatan_nama_kota")
 
-        return df_district, unmatched_names
+        return df_district, unmatched_names, unmapped_bsni
 
 
     def kabupaten_kota_detail(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:

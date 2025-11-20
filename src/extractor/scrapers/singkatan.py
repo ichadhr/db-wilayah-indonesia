@@ -41,7 +41,7 @@ def validate_image(filepath: str) -> bool:
             img.verify()  # Verify the image file
         return True
     except Exception as e:
-        print(f"Failed to validate image: {e}")
+        print(f"\nFailed to validate image: {e}")
         return False
 
 
@@ -175,7 +175,7 @@ def _download_single_image(base_url: str, filename: str, filepath: str) -> bool:
         if validate_image(filepath):
             return True  # Success
         else:
-            print(f"Downloaded {filename} is invalid (corrupted file)")
+            print(f"\nDownloaded {filename} is invalid (corrupted file)")
             # Clean up failed download
             if os.path.exists(filepath):
                 try:
@@ -185,7 +185,7 @@ def _download_single_image(base_url: str, filename: str, filepath: str) -> bool:
             return False
 
     except requests.RequestException as e:
-        print(f"Failed to download {filename}: {e}")
+        print(f"\nFailed to download {filename}: {e}")
         return False
 
 
