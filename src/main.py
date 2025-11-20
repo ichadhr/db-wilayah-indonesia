@@ -30,14 +30,14 @@ def main():
         help="Run only the kabupaten kota batch step"
     )
     group.add_argument(
-        "--details-only",
-        action="store_true",
-        help="Run only the kabupaten kota detail batch step"
-    )
-    group.add_argument(
         "--kecamatan-only",
         action="store_true",
         help="Run only the kecamatan index batch step for testing"
+    )
+    group.add_argument(
+        "--details-only",
+        action="store_true",
+        help="Run only the kabupaten kota detail batch step"
     )
     args = parser.parse_args()
 
