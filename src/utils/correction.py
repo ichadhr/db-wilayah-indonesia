@@ -3,6 +3,8 @@ import csv
 import logging
 from typing import Dict, List, Optional, Tuple
 
+import polars as pl
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +25,7 @@ class CorrectionLoader:
 
     def _load_corrections(self):
         """Load corrections from CSV file."""
-        csv_path = os.path.join(os.path.dirname(__file__), "correction.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
         
         if not os.path.exists(csv_path):
             logger.warning(f"Correction file not found: {csv_path}")
@@ -89,3 +91,19 @@ class CorrectionLoader:
         if fix_source in self._metadata:
             return self._metadata[fix_source].get(value)
         return None
+
+    def get_corrections_df(self) -> Optional[pl.DataFrame]:
+        """
+        Get all corrections as a Polars DataFrame.
+        
+        Returns:
+            Polars DataFrame containing all corrections, or None if import fails
+        """
+        try:
+            csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
+            if os.path.exists(csv_path):
+                return pl.read_csv(csv_path)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to load corrections DataFrame: {e}")
+            return None
