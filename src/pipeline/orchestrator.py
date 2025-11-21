@@ -17,6 +17,7 @@ from .steps.province_index_extraction import execute_province_index_extraction
 from .steps.kabupaten_kota_batch import execute_kabupaten_kota_batch
 from .steps.kabupaten_kota_detail_batch import execute_kabupaten_kota_detail_batch
 from .steps.kecamatan_batch import execute_kecamatan_batch
+from .steps.parquet_merge import execute_parquet_merge
 
 # Import the global shutdown event from batch_processor
 from .batch_processor import shutdown_event
@@ -32,6 +33,7 @@ class PipelineStep(Enum):
     KABUPATEN_KOTA_INDEX_BATCH = "kabupaten_kota_index_batch"
     KABUPATEN_KOTA_DETAIL_BATCH = "kabupaten_kota_detail_batch"
     KECAMATAN_INDEX_BATCH = "kecamatan_index_batch"
+    PARQUET_MERGE = "parquet_merge"
 
 
 @dataclass
@@ -294,6 +296,13 @@ class PipelineOrchestrator:
             else:
                 self.logger.info(f"Skipping completed step: {PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH.value}")
 
+            # Step 7: Parquet Merge
+            if PipelineStep.PARQUET_MERGE.value not in completed_steps:
+                if not self._execute_step(PipelineStep.PARQUET_MERGE):
+                    return False
+            else:
+                self.logger.info(f"Skipping completed step: {PipelineStep.PARQUET_MERGE.value}")
+
             # Clean up state file on successful completion
             if os.path.exists(self.state_file):
                 os.remove(self.state_file)
@@ -338,6 +347,8 @@ class PipelineOrchestrator:
                 result = self._execute_kabupaten_kota_detail_batch()
             elif step == PipelineStep.KECAMATAN_INDEX_BATCH:
                 result = self._execute_kecamatan_batch()
+            elif step == PipelineStep.PARQUET_MERGE:
+                result = self._execute_parquet_merge()
 
             if result and result.success:
                 end_time = datetime.now()
@@ -420,30 +431,9 @@ class PipelineOrchestrator:
         """Execute kecamatan index batch processing."""
         return execute_kecamatan_batch(self.config, self.logger)
 
-    # Public API methods for external callers
-    def execute_structure_extraction(self):
-        """Public API for structure extraction."""
-        return self._execute_structure_extraction()
-
-    def execute_kode_wilayah_extraction(self):
-        """Public API for kode wilayah extraction."""
-        return self._execute_kode_wilayah_extraction()
-
-    def execute_province_index_extraction(self):
-        """Public API for province index extraction."""
-        return self._execute_province_index_extraction()
-
-    def execute_kabupaten_kota_batch(self):
-        """Public API for kabupaten/kota batch processing."""
-        return self._execute_kabupaten_kota_batch()
-
-    def execute_kabupaten_kota_detail_batch(self):
-        """Public API for kabupaten/kota detail batch processing."""
-        return self._execute_kabupaten_kota_detail_batch()
-
-    def execute_kecamatan_batch(self):
-        """Public API for kecamatan batch processing."""
-        return self._execute_kecamatan_batch()
+    def _execute_parquet_merge(self) -> Optional[Any]:
+        """Execute parquet file merging step."""
+        return execute_parquet_merge(self.config, self.logger)
 
     # Public API methods for external callers
     def execute_structure_extraction(self):
@@ -469,6 +459,7 @@ class PipelineOrchestrator:
     def execute_kecamatan_batch(self):
         """Public API for kecamatan batch processing."""
         return self._execute_kecamatan_batch()
+
 
     def _print_summary(self):
         """Print pipeline execution summary."""
@@ -486,7 +477,7 @@ class PipelineOrchestrator:
         print()
 
         for step_result in self.step_results:
-            status = "✓" if step_result.success else "✗"
+            status = "[OK]" if step_result.success else "[FAILED]"
             print(f"{status} {step_result.step.value}: {step_result.duration:.2f}s")
             if step_result.records_processed > 0:
                 print(f"    Records: {step_result.records_processed}")

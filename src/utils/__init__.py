@@ -37,6 +37,9 @@ from .paths import (
 # Correction utilities
 from .correction import CorrectionLoader
 
+# Data merger utilities
+from .data_merger import ParquetFileMerger
+
 # Text normalization and conversion utilities
 from .text_utils import kode_wilayah
 
@@ -74,6 +77,8 @@ __all__ = [
     'sanitize_folder_file_name',
     # Correction
     'CorrectionLoader',
+    # Data merger
+    'ParquetFileMerger',
     # Normalization
     'kode_wilayah',
     # Progress

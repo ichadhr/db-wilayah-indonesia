@@ -41,6 +41,11 @@ def main():
         action="store_true",
         help="Run only the kabupaten kota detail batch step"
     )
+    group.add_argument(
+        "--merge-only",
+        action="store_true",
+        help="Run only the parquet merge step"
+    )
     args = parser.parse_args()
 
     # Create pipeline configuration from settings
@@ -160,6 +165,17 @@ def main():
         else:
             error_msg = result.error_message if result else "Unknown error"
             log_error(BatchProcessingError(f"Kecamatan index batch failed: {error_msg}", operation="kecamatan_batch"), "main_pipeline")
+            exit(1)
+    elif args.merge_only:
+        # Run only the parquet merge step
+        logger.info("Running parquet merge step only")
+        from pipeline.steps.parquet_merge import execute_parquet_merge
+        result = execute_parquet_merge(config, logger)
+        if result and result.success:
+            logger.info("Parquet merge completed successfully")
+        else:
+            error_msg = result.error_message if result else "Unknown error"
+            log_error(BatchProcessingError(f"Parquet merge failed: {error_msg}", operation="parquet_merge"), "main_pipeline")
             exit(1)
     else:
         # Execute full pipeline
