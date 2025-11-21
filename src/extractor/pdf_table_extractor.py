@@ -5,10 +5,12 @@ from typing import Any, List, Optional
 import pdfplumber
 import polars as pl
 from models.pdf_table import ProvinceIndexData, RegencyIndexData, DistrictIndexData, DetailsData
+from utils.errors import TableExtractionError, FileOperationError, error_handler, log_error
 from utils.progress import progress_manager
 from utils.text_utils import normalize_ibukota_kabupaten_kota, normalize_kabupaten_kota
 
 
+@error_handler(operation_name="get_p_bsni_mapping", log_errors=True)
 def get_p_bsni_mapping() -> dict[str, str]:
     """
     Load province name to abbreviation mapping from kode_wilayah.parquet file.
@@ -17,7 +19,14 @@ def get_p_bsni_mapping() -> dict[str, str]:
         Dictionary mapping province names to their ISO abbreviations (with ID- prefix)
     """
     parquet_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
-    df = pl.read_parquet(parquet_path)
+    try:
+        df = pl.read_parquet(parquet_path)
+    except Exception as e:
+        raise FileOperationError(
+            f"Failed to read kode_wilayah.parquet for province BSNI mapping: {str(e)}",
+            file_path=parquet_path,
+            operation="read_parquet"
+        ) from e
     mapping = {}
     for row in df.to_dicts():
         provinsi = row["provinsi"]
@@ -28,6 +37,7 @@ def get_p_bsni_mapping() -> dict[str, str]:
     return mapping
 
 
+@error_handler(operation_name="get_k_bsni_mapping", log_errors=True)
 def get_k_bsni_mapping() -> dict[str, str]:
     """
     Load ibukota_kabupaten_kota to singkatan_nama_kota mapping from kode_wilayah.parquet file.
@@ -36,7 +46,14 @@ def get_k_bsni_mapping() -> dict[str, str]:
         Dictionary mapping normalized ibukota_kabupaten_kota names to singkatan_nama_kota
     """
     parquet_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
-    df = pl.read_parquet(parquet_path)
+    try:
+        df = pl.read_parquet(parquet_path)
+    except Exception as e:
+        raise FileOperationError(
+            f"Failed to read kode_wilayah.parquet for kecamatan BSNI mapping: {str(e)}",
+            file_path=parquet_path,
+            operation="read_parquet"
+        ) from e
     mapping = {}
     for row in df.to_dicts():
         nama_kota = row["nama_kota"]
@@ -86,7 +103,15 @@ class PDFTableExtractorBase:
             List of table rows with duplicate headers merged
         """
         records = []
-        with pdfplumber.open(self.pdf_path) as pdf:
+        try:
+            pdf = pdfplumber.open(self.pdf_path)
+        except Exception as e:
+            raise FileOperationError(
+                f"Failed to open PDF file: {str(e)}",
+                file_path=self.pdf_path,
+                operation="pdf_open"
+            ) from e
+        with pdf:
             if pdf.pages:
                 end_page = (
                     self.end_page if self.end_page is not None else len(pdf.pages)
@@ -196,6 +221,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
     Child class of PDFTableExtractor with specific methods for extracting province-related tables.
     """
 
+    @error_handler(operation_name="provinsi_index_extraction", log_errors=True)
     def provinsi_index(self, start_page: int, end_page: int) -> pl.DataFrame:
         """
         Extract province index table.
@@ -247,7 +273,10 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     )
                     province_index_data.append(data)
                 except (ValueError, IndexError) as e:
-                    raise ValueError(f"Failed to parse table row {row}: {e}")
+                    raise TableExtractionError(
+                        f"Failed to parse province index table row {row}: {str(e)}",
+                        table_format="provinsi_index"
+                    ) from e
 
         # DataFrame-based matching for p_bsni
         df_province = pl.DataFrame([data.model_dump() for data in province_index_data])
@@ -261,7 +290,14 @@ class PDFTableExtractor(PDFTableExtractorBase):
         if len(provinces_with_name) > 0:
             # Load kode_wilayah DataFrame
             kode_wilayah_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
-            df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+            try:
+                df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+            except Exception as e:
+                raise FileOperationError(
+                    f"Failed to read kode_wilayah.parquet for province mapping: {str(e)}",
+                    file_path=kode_wilayah_path,
+                    operation="read_parquet"
+                ) from e
 
             # Perform join on provinsi name
             joined = provinces_with_name.join(
@@ -309,6 +345,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         return df_province
 
 
+    @error_handler(operation_name="kabupaten_kota_index_extraction", log_errors=True)
     def kabupaten_kota_index(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:
         """
         Extract regency index table.
@@ -375,7 +412,10 @@ class PDFTableExtractor(PDFTableExtractorBase):
                         )
                         regency_index_data.append(data)
                     except (ValueError, IndexError) as e:
-                        raise ValueError(f"Failed to parse table row {row}: {e}")
+                        raise TableExtractionError(
+                            f"Failed to parse kabupaten_kota index table row {row}: {str(e)}",
+                            table_format="kabupaten_kota_index"
+                        ) from e
                 else:
                     i += 1
             else:
@@ -384,6 +424,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         return pl.DataFrame([data.model_dump() for data in regency_index_data])
 
 
+    @error_handler(operation_name="kecamatan_index_extraction", log_errors=True)
     def kecamatan_index(self, start_page: int, end_page: int, show_progress: bool = True) -> tuple[pl.DataFrame, list, list]:
         """
         Extract district index table.
@@ -394,9 +435,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
             show_progress: Whether to display progress bar during extraction
 
         Returns:
-            Tuple of (Polars DataFrame with district data, 
-                     list of unmatched ibukota names from PDF,
-                     list of unmapped BSNI cities)
+            Tuple of (Polars DataFrame with district data,
+                      list of unmatched ibukota names from PDF,
+                      list of unmapped BSNI cities)
         """
         # Use specific settings for district index tables
         kecamatan_index_settings = {} # empty config
@@ -410,6 +451,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
 
         district_index_data = []
         unmatched_names = []  # list of (ibukota_name, kode_kecamatan)
+        unmapped_bsni = []  # list of unmapped BSNI cities
 
         # Context variables for hierarchical data
         current_province = {
@@ -600,7 +642,14 @@ class PDFTableExtractor(PDFTableExtractorBase):
         if len(districts_with_ibukota) > 0:
             # Load kode_wilayah DataFrame
             kode_wilayah_path = os.path.join(os.path.dirname(__file__), "..", "output", "parquet", "kode_wilayah.parquet")
-            df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+            try:
+                df_kode_wilayah = pl.read_parquet(kode_wilayah_path)
+            except Exception as e:
+                raise FileOperationError(
+                    f"Failed to read kode_wilayah.parquet for kecamatan mapping: {str(e)}",
+                    file_path=kode_wilayah_path,
+                    operation="read_parquet"
+                ) from e
 
             # Prepare kode_wilayah for join - create normalized key
             df_kode_wilayah_join = df_kode_wilayah.with_columns(
@@ -730,6 +779,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         return df_district, unmatched_names, unmapped_bsni
 
 
+    @error_handler(operation_name="kabupaten_kota_detail_extraction", log_errors=True)
     def kabupaten_kota_detail(self, start_page: int, end_page: int, show_progress: bool = True) -> pl.DataFrame:
         """
         Extract subdistrict/village table.

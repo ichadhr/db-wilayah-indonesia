@@ -5,6 +5,7 @@ from typing import Optional, Any
 
 from ..batch_processor import BatchProcessor, _validate_kabupaten_kota_data
 from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.errors import BatchProcessingError, error_handler, log_error
 from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
 from utils.structure_utils import kabupaten_kota_index_struct
 
@@ -83,11 +84,14 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
-        log_messages.append(f"ERROR: Failed to extract {province_name}: {e}")
+        error_msg = f"Failed to extract kabupaten/kota for {province_name}"
+        log_error(BatchProcessingError(error_msg, province_name=province_name), "kabupaten_kota_extraction")
+        log_messages.append(f"ERROR: {error_msg}: {e}")
 
     return result, log_messages
 
 
+@error_handler(operation_name="kabupaten_kota_batch_processing", log_errors=True)
 def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:
     """Execute kabupaten/kota index batch processing."""
     if logger is None:
@@ -98,12 +102,12 @@ def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise ValueError("Structure file not found, run structure extraction first")
+        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
 
     # Get all regency index sections
     district_city_df = kabupaten_kota_index_struct(structure_path, config.province_filter)
     if len(district_city_df) == 0:
-        raise ValueError("No regency index found in structure")
+        raise BatchProcessingError("No regency index found in structure", file_path=structure_path)
 
     total_provinces = len(district_city_df)
     logger.info(f"Processing {total_provinces} provinces for kabupaten/kota index")

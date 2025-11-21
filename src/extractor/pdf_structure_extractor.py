@@ -4,6 +4,7 @@ from typing import Any
 
 from models.pdf_structure import *
 from pypdf import PdfReader
+from utils.errors import PDFStructureError, error_handler, log_error
 from utils.paths import get_json_output_path
 from utils.progress import progress_manager
 
@@ -49,6 +50,7 @@ class PDFStructureExtractor:
         # Suppress PDF warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="pypdf")
 
+    @error_handler(operation_name="pdf_structure_extraction", log_errors=True)
     def extract_structure(self, cache_metadata=None) -> AdministrativeStructure:
         """
         Extract administrative structure from the PDF file.
@@ -76,7 +78,14 @@ class PDFStructureExtractor:
                     )
                     progress_ctx.advance(1)
                 except Exception as extract_error:
-                    print(f"Error processing page {page_num}: {extract_error}")
+                    log_error(
+                        PDFStructureError(
+                            f"Failed to process page {page_num}: {str(extract_error)}",
+                            page_num=page_num
+                        ),
+                        operation="pdf_structure_extraction",
+                        level="error"
+                    )
                     progress_ctx.advance(1)
                     continue
 

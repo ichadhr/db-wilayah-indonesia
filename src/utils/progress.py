@@ -10,6 +10,8 @@ from typing import Optional
 
 from tqdm import tqdm
 
+from utils.errors import error_handler
+
 
 class ProgressManager:
     """Centralized progress management for PDF processing operations."""
@@ -18,6 +20,7 @@ class ProgressManager:
         self.active_progresses = {}
 
     @contextmanager
+    @error_handler(operation_name="pdf_processing_progress", log_errors=True, re_raise=False)
     def pdf_processing_progress(
         self,
         total_pages: int,
@@ -45,6 +48,7 @@ class ProgressManager:
             progress_bar.close()
 
     @contextmanager
+    @error_handler(operation_name="table_extraction_progress", log_errors=True, re_raise=False)
     def table_extraction_progress(
         self,
         total_pages: int,
@@ -69,6 +73,7 @@ class ProgressManager:
             progress_bar.close()
 
     @contextmanager
+    @error_handler(operation_name="download_progress", log_errors=True, re_raise=False)
     def download_progress(self, total_items: int, description: str = "Downloading"):
         """Context manager for download operations."""
         # Create tqdm progress bar for downloads
@@ -90,6 +95,7 @@ class ProgressManager:
             progress_bar.close()
 
     @contextmanager
+    @error_handler(operation_name="batch_processing_progress", log_errors=True, re_raise=False)
     def batch_processing_progress(
         self,
         total_items: int,

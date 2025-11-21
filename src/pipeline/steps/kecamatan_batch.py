@@ -5,6 +5,7 @@ from typing import Optional, Any
 
 from ..batch_processor import BatchProcessor, _validate_kecamatan_data
 from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.errors import BatchProcessingError, error_handler, log_error
 from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
 from utils.structure_utils import kecamatan_index_struct
 
@@ -85,11 +86,14 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[dict,
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
-        log_messages.append(f"ERROR: Failed to extract kecamatan for {province_name}: {e}")
+        error_msg = f"Failed to extract kecamatan for {province_name}"
+        log_error(BatchProcessingError(error_msg, province_name=province_name), "kecamatan_extraction")
+        log_messages.append(f"ERROR: {error_msg}: {e}")
 
     return result, log_messages
 
 
+@error_handler(operation_name="kecamatan_batch_processing", log_errors=True)
 def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     """Execute kecamatan index batch processing."""
     if logger is None:
@@ -101,12 +105,12 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise ValueError("Structure file not found, run structure extraction first")
+        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
 
     # Get all district index sections
     district_df = kecamatan_index_struct(structure_path, config.province_filter)
     if len(district_df) == 0:
-        raise ValueError("No district index found in structure")
+        raise BatchProcessingError("No district index found in structure", file_path=structure_path)
 
     total_provinces = len(district_df)
     logger.info(f"Processing {total_provinces} provinces for kecamatan index")

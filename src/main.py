@@ -9,7 +9,9 @@ env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(env_path)
 
 from config.settings import settings
+from utils.paths import get_parquet_output_path, get_json_output_path
 from pipeline.orchestrator import PipelineOrchestrator, PipelineConfig
+from utils.errors import log_error, BatchProcessingError, PDFExtractorError
 from utils.paths import ensure_output_dirs
 
 logger = logging.getLogger(__name__)
@@ -62,102 +64,102 @@ def main():
     if args.provinsi_only:
         # Run only the province index extraction step
         logger.info("Running province index extraction step only")
-        kode_wilayah_file = "output/parquet/kode_wilayah.parquet"
+        kode_wilayah_file = get_parquet_output_path("kode_wilayah.parquet")
         if not os.path.exists(kode_wilayah_file):
             logger.info("Kode wilayah parquet not found, executing kode wilayah extraction")
-            result = orchestrator._execute_kode_wilayah_extraction()
+            result = orchestrator.execute_kode_wilayah_extraction()
             if result and result.success:
                 logger.info("Kode wilayah extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
-                logger.error(f"Kode wilayah extraction failed: {error_msg}")
+                log_error(BatchProcessingError(f"Kode wilayah extraction failed: {error_msg}", operation="kode_wilayah_extraction"), "main_pipeline")
                 exit(1)
-        structure_file = "output/json/structure_pdf.json"
+        structure_file = get_json_output_path("structure_pdf.json")
         if not os.path.exists(structure_file):
             logger.info("Structure PDF JSON not found, executing structure extraction")
-            result = orchestrator._execute_structure_extraction()
+            result = orchestrator.execute_structure_extraction()
             if result and result.success:
                 logger.info("Structure extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
-                logger.error(f"Structure extraction failed: {error_msg}")
+                log_error(BatchProcessingError(f"Structure extraction failed: {error_msg}", operation="structure_extraction"), "main_pipeline")
                 exit(1)
-        result = orchestrator._execute_province_index_extraction()
+        result = orchestrator.execute_province_index_extraction()
         if result and result.success:
             logger.info("Province index extraction completed successfully")
         else:
             error_msg = result.error_message if result else "Unknown error"
-            logger.error(f"Province index extraction failed: {error_msg}")
+            log_error(BatchProcessingError(f"Province index extraction failed: {error_msg}", operation="province_index_extraction"), "main_pipeline")
             exit(1)
     elif args.kabupaten_only:
         # Run only the kabupaten kota batch step
         logger.info("Running kabupaten kota batch step only")
-        structure_file = "output/json/structure_pdf.json"
+        structure_file = get_json_output_path("structure_pdf.json")
         if not os.path.exists(structure_file):
             logger.info("Structure PDF JSON not found, executing structure extraction")
-            result = orchestrator._execute_structure_extraction()
+            result = orchestrator.execute_structure_extraction()
             if result and result.success:
                 logger.info("Structure extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
                 logger.error(f"Structure extraction failed: {error_msg}")
                 exit(1)
-        result = orchestrator._execute_kabupaten_kota_batch()
+        result = orchestrator.execute_kabupaten_kota_batch()
         if result and result.success:
             logger.info("Kabupaten kota batch completed successfully")
         else:
             error_msg = result.error_message if result else "Unknown error"
-            logger.error(f"Kabupaten kota batch failed: {error_msg}")
+            log_error(BatchProcessingError(f"Kabupaten kota batch failed: {error_msg}", operation="kabupaten_kota_batch"), "main_pipeline")
             exit(1)
     elif args.details_only:
         # Run only the kabupaten kota detail batch step
         logger.info("Running kabupaten kota detail batch step only")
-        structure_file = "output/json/structure_pdf.json"
+        structure_file = get_json_output_path("structure_pdf.json")
         if not os.path.exists(structure_file):
             logger.info("Structure PDF JSON not found, executing structure extraction")
-            result = orchestrator._execute_structure_extraction()
+            result = orchestrator.execute_structure_extraction()
             if result and result.success:
                 logger.info("Structure extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
                 logger.error(f"Structure extraction failed: {error_msg}")
                 exit(1)
-        result = orchestrator._execute_kabupaten_kota_detail_batch()
+        result = orchestrator.execute_kabupaten_kota_detail_batch()
         if result and result.success:
             logger.info("Kabupaten kota detail batch completed successfully")
         else:
             error_msg = result.error_message if result else "Unknown error"
-            logger.error(f"Kabupaten kota detail batch failed: {error_msg}")
+            log_error(BatchProcessingError(f"Kabupaten kota detail batch failed: {error_msg}", operation="kabupaten_kota_detail_batch"), "main_pipeline")
             exit(1)
     elif args.kecamatan_only:
         # Run only the kecamatan batch step
         logger.info("Running kecamatan index batch step only")
-        kode_wilayah_file = "output/parquet/kode_wilayah.parquet"
+        kode_wilayah_file = get_parquet_output_path("kode_wilayah.parquet")
         if not os.path.exists(kode_wilayah_file):
             logger.info("Kode wilayah parquet not found, executing kode wilayah extraction")
-            result = orchestrator._execute_kode_wilayah_extraction()
+            result = orchestrator.execute_kode_wilayah_extraction()
             if result and result.success:
                 logger.info("Kode wilayah extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
                 logger.error(f"Kode wilayah extraction failed: {error_msg}")
                 exit(1)
-        structure_file = "output/json/structure_pdf.json"
+        structure_file = get_json_output_path("structure_pdf.json")
         if not os.path.exists(structure_file):
             logger.info("Structure PDF JSON not found, executing structure extraction")
-            result = orchestrator._execute_structure_extraction()
+            result = orchestrator.execute_structure_extraction()
             if result and result.success:
                 logger.info("Structure extraction completed successfully")
             else:
                 error_msg = result.error_message if result else "Unknown error"
                 logger.error(f"Structure extraction failed: {error_msg}")
                 exit(1)
-        result = orchestrator._execute_kecamatan_batch()
+        result = orchestrator.execute_kecamatan_batch()
         if result and result.success:
             logger.info("Kecamatan index batch completed successfully")
         else:
             error_msg = result.error_message if result else "Unknown error"
-            logger.error(f"Kecamatan index batch failed: {error_msg}")
+            log_error(BatchProcessingError(f"Kecamatan index batch failed: {error_msg}", operation="kecamatan_batch"), "main_pipeline")
             exit(1)
     else:
         # Execute full pipeline

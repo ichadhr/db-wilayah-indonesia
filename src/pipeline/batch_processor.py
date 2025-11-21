@@ -18,6 +18,7 @@ from utils.paths import (
     sanitize_folder_file_name
 )
 from utils.progress import progress_manager
+from utils.errors import BatchProcessingError, FileOperationError, TableExtractionError, log_error, error_handler
 
 
 # Global shutdown event for graceful termination
@@ -124,10 +125,25 @@ class BatchProcessor:
                         results.append(failed_result)
                         failed_tasks.append(province_name)
                         progress_ctx.advance(1)
+                    except (TableExtractionError, FileOperationError, BatchProcessingError) as e:
+                        province_name = tasks[i]["province_name"]
+                        error_msg = f"Structured error processing {province_name}: {str(e)}"
+                        log_error(e, "batch_processing", "error")
+                        failed_result = {
+                            "province_name": province_name,
+                            "success": False,
+                            "error": error_msg,
+                            "records": 0,
+                            "time": 0.0,
+                            "files": []
+                        }
+                        results.append(failed_result)
+                        failed_tasks.append(province_name)
+                        progress_ctx.advance(1)
                     except Exception as e:
                         province_name = tasks[i]["province_name"]
                         error_msg = f"Unexpected error processing {province_name}: {str(e)}"
-                        self.logger.error(error_msg)
+                        log_error(e, "batch_processing", "error")
                         failed_result = {
                             "province_name": province_name,
                             "success": False,
@@ -163,7 +179,7 @@ class BatchProcessor:
                 # Re-raise KeyboardInterrupt so orchestrator can handle it
                 raise
             except Exception as pool_error:
-                self.logger.error(f"Pool processing error: {pool_error}")
+                log_error(pool_error, "pool_processing", "error")
                 # Mark remaining tasks as failed
                 for task in tasks[len(results):]:
                     failed_result = {
@@ -298,8 +314,19 @@ def _multiprocessing_worker(
             "time": 0.0,
             "files": []
         }, []
+    except (TableExtractionError, FileOperationError, BatchProcessingError) as e:
+        log_error(e, "multiprocessing_worker", "error")
+        return {
+            "province_name": task.get("province_name", "unknown"),
+            "success": False,
+            "error": f"Worker error: {str(e)}",
+            "records": 0,
+            "time": 0.0,
+            "files": []
+        }, []
     except Exception as e:
-         return {
+        log_error(e, "multiprocessing_worker", "error")
+        return {
             "province_name": task.get("province_name", "unknown"),
             "success": False,
             "error": f"Worker error: {str(e)}",
@@ -611,9 +638,15 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         log_messages.append(f"INFO: Saved debug JSON for {province_name}: {debug_path}")
         result["files"].append(debug_path)
 
+    except (TableExtractionError, FileOperationError) as e:
+        extraction_time = time.time() - start_time
+        result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kabupaten_kota_extraction", "error")
+        log_messages.append(f"ERROR: Failed to extract {province_name}: {e}")
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kabupaten_kota_extraction", "error")
         log_messages.append(f"ERROR: Failed to extract {province_name}: {e}")
 
     return result, log_messages
@@ -650,7 +683,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
 
     try:
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index, unmatched_names = table_extractor.kecamatan_index(
+        kecamatan_index, unmatched_names, unmapped_bsni = table_extractor.kecamatan_index(
             start_page=index_start, end_page=index_end, show_progress=False
         )
 
@@ -661,6 +694,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
                 "records": len(kecamatan_index),
                 "time": extraction_time,
                 "unmatched_names": unmatched_names,
+                "unmapped_bsni": unmapped_bsni,
             }
         )
 
@@ -710,9 +744,15 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
         log_messages.append(f"INFO: Saved debug JSON for {province_name}: {debug_path}")
         result["files"].append(debug_path)
 
+    except (TableExtractionError, FileOperationError) as e:
+        extraction_time = time.time() - start_time
+        result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kecamatan_extraction", "error")
+        log_messages.append(f"ERROR: Failed to extract kecamatan for {province_name}: {e}")
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kecamatan_extraction", "error")
         log_messages.append(f"ERROR: Failed to extract kecamatan for {province_name}: {e}")
 
     return result, log_messages
@@ -805,9 +845,15 @@ def _extract_single_province_kabupaten_kota_detail(file_path: str, row: dict) ->
         log_messages.append(f"INFO: Saved debug JSON for {detail_name}: {debug_path}")
         result["files"].append(debug_path)
 
+    except (TableExtractionError, FileOperationError) as e:
+        extraction_time = time.time() - start_time
+        result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kabupaten_kota_detail_extraction", "error")
+        log_messages.append(f"ERROR: Failed to extract detail for {detail_name}: {e}")
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
+        log_error(e, "kabupaten_kota_detail_extraction", "error")
         log_messages.append(f"ERROR: Failed to extract detail for {detail_name}: {e}")
 
     return result, log_messages

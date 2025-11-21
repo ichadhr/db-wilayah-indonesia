@@ -1,9 +1,11 @@
 import json
+import gc
 import os
 
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from extractor.pdf_structure_extractor import PDFStructureExtractor
 from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.errors import FileOperationError, TableExtractionError, ValidationError, OCRError, error_handler, log_error
 from utils.paths import (
     get_csv_output_path,
     get_json_output_path,
@@ -15,6 +17,7 @@ from config.settings import settings
 from .batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota
 
 
+@error_handler(operation_name="extract_pdf_structure", log_errors=True, re_raise=False)
 def extract_pdf_structure(doc_path: str):
     try:
         print("Starting scanning PDF document...")
@@ -34,16 +37,25 @@ def extract_pdf_structure(doc_path: str):
 
         return structure_json_path
 
+    except (FileOperationError, ValidationError) as e:
+        log_error(e, "extract_pdf_structure", "error")
+        print(f"Error during get PDF structure: {e}")
     except Exception as e:
+        log_error(e, "extract_pdf_structure", "error")
         print(f"Error during get PDF structure: {e}")
 
 
+@error_handler(operation_name="extract_table_provinsi_index", log_errors=True, re_raise=False)
 def extract_table_provinsi_index(file_path: str, structure_path: str):
     try:
         # Get province index page ranges using utility
         prov_df = provinsi_index_struct(structure_path)
         if len(prov_df) == 0:
-            raise ValueError("No province index found in structure")
+            raise ValidationError(
+                "No province index found in structure",
+                field="structure_data",
+                value=structure_path
+            )
 
         prov_row = prov_df.row(0)
         index_name = prov_row[0]  # name column
@@ -95,17 +107,26 @@ def extract_table_provinsi_index(file_path: str, structure_path: str):
             json.dump(debug_data, f, ensure_ascii=False, indent=2)
         print(f"Debug info saved to {debug_path}")
 
+    except (ValidationError, TableExtractionError, FileOperationError) as e:
+        log_error(e, "extract_table_provinsi_index", "error")
+        print(f"Error during Province table extraction: {e}")
     except Exception as e:
+        log_error(e, "extract_table_provinsi_index", "error")
         print(f"Error during Province table extraction: {e}")
 
 
+@error_handler(operation_name="extract_table_kabupaten_kota_index", log_errors=True, re_raise=False)
 def extract_table_kabupaten_kota_index(file_path: str, structure_path: str):
     province_name = "Unknown"  # Initialize for error reporting
     try:
         # Get regency index page ranges using utility
         regency_df = kabupaten_kota_index_struct(structure_path)
         if len(regency_df) == 0:
-            raise ValueError("No regency index found in structure")
+            raise ValidationError(
+                "No regency index found in structure",
+                field="structure_data",
+                value=structure_path
+            )
 
         regency_row = regency_df.row(0)
         province_name = regency_row[0]  # province column
@@ -160,19 +181,30 @@ def extract_table_kabupaten_kota_index(file_path: str, structure_path: str):
             json.dump(debug_data, f, ensure_ascii=False, indent=2)
         print(f"Debug info saved to {debug_path}")
 
+    except (ValidationError, TableExtractionError, FileOperationError) as e:
+        log_error(e, "extract_table_kabupaten_kota_index", "error")
+        print(
+            f"Error during District/City table extraction for Province {province_name}: {e}"
+        )
     except Exception as e:
+        log_error(e, "extract_table_kabupaten_kota_index", "error")
         print(
             f"Error during District/City table extraction for Province {province_name}: {e}"
         )
 
 
+@error_handler(operation_name="extract_table_kecamatan_index", log_errors=True, re_raise=False)
 def extract_table_kecamatan_index(file_path: str, structure_path: str):
     province_name = "Unknown"  # Initialize for error reporting
     try:
         # Get district/city index page ranges using utility
         district_df = kecamatan_index_struct(structure_path)
         if len(district_df) == 0:
-            raise ValueError("No district index found in structure")
+            raise ValidationError(
+                "No district index found in structure",
+                field="structure_data",
+                value=structure_path
+            )
 
         print(district_df)
 
@@ -184,7 +216,9 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
         index_end = district_row[5]  # end_page column
 
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index, _ = table_extractor.kecamatan_index(
+        # kecamatan_index returns (df, unmatched_pdf_cities, unmapped_bsni_cities)
+        # The latter two are logged internally by the extractor
+        kecamatan_index, _, _ = table_extractor.kecamatan_index(
             start_page=index_start, end_page=index_end, show_progress=False
         )
 
@@ -202,7 +236,7 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
 
         # CSV (tabular data)
         csv_path = get_csv_output_path(f"{path_base}.csv", ensure_dir=True)
-        # kecamatan_index.write_csv(csv_path)
+        # CSV/JSON output disabled for kecamatan - data only saved as parquet
         print(f"Table data saved to {csv_path}")
 
         # Parquet (efficient storage)
@@ -229,7 +263,13 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
             json.dump(debug_data, f, ensure_ascii=False, indent=2)
         print(f"Debug info saved to {debug_path}")
 
+    except (ValidationError, TableExtractionError, FileOperationError) as e:
+        log_error(e, "extract_table_kecamatan_index", "error")
+        print(
+            f"Error during District table extraction for Province {province_name}: {e}"
+        )
     except Exception as e:
+        log_error(e, "extract_table_kecamatan_index", "error")
         print(
             f"Error during District table extraction for Province {province_name}: {e}"
         )
@@ -251,7 +291,11 @@ def extract_table_kabupaten_kota_index_batch(file_path: str, structure_path: str
     # Get all regency index sections
     district_city_df = kabupaten_kota_index_struct(structure_path, province_filter)
     if len(district_city_df) == 0:
-        raise ValueError("No regency index found in structure")
+        raise ValidationError(
+            "No regency index found in structure",
+            field="structure_data",
+            value=structure_path
+        )
 
     total_provinces = len(district_city_df)
     if max_workers == 1:
@@ -298,12 +342,12 @@ def extract_table_kabupaten_kota_index_batch(file_path: str, structure_path: str
         print(f"Batch {batch_num}/{total_batches} - Completed ✓")
 
         # Memory cleanup between batches
-        import gc
         gc.collect()
 
     return all_results
 
 
+@error_handler(operation_name="extract_code_wilayah", log_errors=True, re_raise=False)
 def extract_code_wilayah():
     try:
         # Extract kode wilayah data using OCR
@@ -315,7 +359,11 @@ def extract_code_wilayah():
             f"Successfully extracted {len(kode_wilayah_data.records)} kode wilayah records."
         )
         print("Data saved to output directories (parquet, csv, json).")
+    except OCRError as e:
+        log_error(e, "extract_code_wilayah", "error")
+        print(f"Error during OCR extraction: {e}")
     except Exception as e:
+        log_error(e, "extract_code_wilayah", "error")
         print(f"Error during OCR extraction: {e}")
 
 

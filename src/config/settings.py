@@ -14,6 +14,14 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
+
+def validate_log_level_value(v: str) -> str:
+    """Shared validator for log level fields."""
+    allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if v.upper() not in allowed_levels:
+        raise ValueError(f"log_level must be one of {allowed_levels}")
+    return v.upper()
+
 class PipelineSettings(BaseSettings):
     """Settings for the data pipeline."""
 

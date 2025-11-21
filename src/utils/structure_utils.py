@@ -11,12 +11,36 @@ from typing import List, Optional
 import polars as pl
 from models.pdf_structure import AdministrativeStructure
 
+from utils.errors import FileOperationError, ValidationError, error_handler
 
+
+@error_handler(operation_name="load_structure", log_errors=True)
 def load_structure(json_path: str) -> AdministrativeStructure:
     """Load AdministrativeStructure from JSON file."""
-    with open(json_path, "r", encoding="utf-8") as f:
-        structure_data = json.load(f)
-    return AdministrativeStructure(**structure_data)
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            structure_data = json.load(f)
+    except (IOError, OSError) as e:
+        raise FileOperationError(
+            f"Failed to read structure JSON file: {str(e)}",
+            file_path=json_path,
+            operation="file_read"
+        ) from e
+    except json.JSONDecodeError as e:
+        raise ValidationError(
+            f"Invalid JSON format in structure file: {str(e)}",
+            field="json_content",
+            value=json_path
+        ) from e
+
+    try:
+        return AdministrativeStructure(**structure_data)
+    except (TypeError, ValueError) as e:
+        raise ValidationError(
+            f"Invalid structure data format: {str(e)}",
+            field="structure_data",
+            value=json_path
+        ) from e
 
 
 def validate_dataframe_schema(df: pl.DataFrame, expected_columns: List[str]) -> bool:
@@ -55,8 +79,10 @@ def _get_province_section_struct(
         "end_page",
     ]
     if not validate_dataframe_schema(df, expected_columns):
-        raise ValueError(
-            f"Schema validation failed for {section_attr}. Expected: {expected_columns}, Got: {df.columns}"
+        raise ValidationError(
+            f"Schema validation failed for {section_attr}. Expected: {expected_columns}, Got: {df.columns}",
+            field="dataframe_schema",
+            value=str(df.columns)
         )
     return df
 
@@ -77,8 +103,10 @@ def provinsi_index_struct(json_path: str) -> pl.DataFrame:
     df = pl.DataFrame(data)
     expected_columns = ["name", "table_format", "start_page", "end_page"]
     if not validate_dataframe_schema(df, expected_columns):
-        raise ValueError(
-            f"Schema validation failed for provinsi_index_struct. Expected: {expected_columns}, Got: {df.columns}"
+        raise ValidationError(
+            f"Schema validation failed for provinsi_index_struct. Expected: {expected_columns}, Got: {df.columns}",
+            field="dataframe_schema",
+            value=str(df.columns)
         )
     return df
 
@@ -130,7 +158,9 @@ def kabupaten_kota_detail_struct(
         "end_page",
     ]
     if not validate_dataframe_schema(df, expected_columns):
-        raise ValueError(
-            f"Schema validation failed for kabupaten_kota_detail_struct. Expected: {expected_columns}, Got: {df.columns}"
+        raise ValidationError(
+            f"Schema validation failed for kabupaten_kota_detail_struct. Expected: {expected_columns}, Got: {df.columns}",
+            field="dataframe_schema",
+            value=str(df.columns)
         )
     return df

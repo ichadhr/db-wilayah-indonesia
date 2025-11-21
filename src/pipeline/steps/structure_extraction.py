@@ -4,9 +4,11 @@ from typing import Optional, Any
 
 from extractor.pdf_structure_extractor import PDFStructureExtractor
 from utils.cache_utils import get_pdf_metadata, load_cached_structure_with_validation
+from utils.errors import BatchProcessingError, error_handler, log_error
 from utils.paths import get_json_output_path
 
 
+@error_handler(operation_name="structure_extraction", log_errors=True)
 def execute_structure_extraction(config, force_restructure: bool = False, force_regeneration: Optional[str] = None, logger=None) -> Optional[Any]:
     """
     Execute PDF structure extraction step with intelligent caching.
@@ -31,7 +33,7 @@ def execute_structure_extraction(config, force_restructure: bool = False, force_
 
     # Check if PDF exists
     if not os.path.exists(pdf_path):
-        raise ValueError(f"PDF file not found: {pdf_path}")
+        raise BatchProcessingError(f"PDF file not found: {pdf_path}", file_path=pdf_path)
 
     # Determine if we should skip caching
     skip_cache = force_restructure or force_regeneration in ['always', 'force']

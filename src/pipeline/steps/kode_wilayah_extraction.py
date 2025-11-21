@@ -2,6 +2,7 @@ import json
 from typing import Optional, Any
 
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
+from utils.errors import OCRError, error_handler, log_error
 from utils.paths import (
     get_json_output_path,
     get_parquet_output_path,
@@ -12,6 +13,7 @@ from ..validation import validate_kode_wilayah_data
 import polars as pl
 
 
+@error_handler(operation_name="kode_wilayah_extraction", log_errors=True)
 def execute_kode_wilayah_extraction(config, logger=None) -> Optional[Any]:
     """Execute kode wilayah extraction step."""
     if logger is None:
@@ -22,7 +24,12 @@ def execute_kode_wilayah_extraction(config, logger=None) -> Optional[Any]:
     extractor = KodeWilayahOCR()
 
     # Extract kode wilayah data
-    kode_wilayah_table = extractor.extract_kode_wilayah(logger)
+    try:
+        kode_wilayah_table = extractor.extract_kode_wilayah(logger)
+    except Exception as e:
+        error_msg = "Failed to extract kode wilayah data via OCR"
+        log_error(OCRError(error_msg, ocr_engine="KodeWilayahOCR"), "kode_wilayah_extraction")
+        raise OCRError(error_msg, ocr_engine="KodeWilayahOCR") from e
 
     logger.info(f"Extracted {len(kode_wilayah_table.records)} kode wilayah records")
 

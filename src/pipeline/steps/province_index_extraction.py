@@ -3,6 +3,7 @@ import os
 from typing import Optional, Any
 
 from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.errors import BatchProcessingError, error_handler, log_error
 from utils.paths import (
     get_json_output_path,
     get_parquet_output_path,
@@ -13,6 +14,7 @@ from config.settings import settings
 from ..validation import validate_province_data
 
 
+@error_handler(operation_name="province_index_extraction", log_errors=True)
 def execute_province_index_extraction(config, logger=None) -> Optional[Any]:
     """Execute province index extraction step."""
     if logger is None:
@@ -23,12 +25,12 @@ def execute_province_index_extraction(config, logger=None) -> Optional[Any]:
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise ValueError("Structure file not found, run structure extraction first")
+        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
 
     # Get province index page ranges
     prov_df = provinsi_index_struct(structure_path)
     if len(prov_df) == 0:
-        raise ValueError("No province index found in structure")
+        raise BatchProcessingError("No province index found in structure", file_path=structure_path)
 
     prov_row = prov_df.row(0)
     index_name = prov_row[0]

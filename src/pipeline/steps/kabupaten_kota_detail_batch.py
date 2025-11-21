@@ -6,6 +6,7 @@ from typing import Dict, Optional, Any
 
 from ..batch_processor import BatchProcessor
 from extractor.pdf_table_extractor import PDFTableExtractor
+from utils.errors import BatchProcessingError, error_handler, log_error
 from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
 from utils.structure_utils import kabupaten_kota_detail_struct
 
@@ -55,11 +56,14 @@ def _extract_single_province_kabupaten_kota_detail(file_path: str, row: dict) ->
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
-        log_messages.append(f"ERROR: Failed to extract detail for {detail_name}: {e}")
+        error_msg = f"Failed to extract kabupaten/kota detail for {detail_name}"
+        log_error(BatchProcessingError(error_msg, province_name=province_name, detail_name=detail_name), "kabupaten_kota_detail_extraction")
+        log_messages.append(f"ERROR: {error_msg}: {e}")
 
     return result, log_messages
 
 
+@error_handler(operation_name="kabupaten_kota_detail_batch_processing", log_errors=True)
 def execute_kabupaten_kota_detail_batch(config, logger=None) -> Optional[Any]:
     """Execute kabupaten/kota detail batch processing."""
     if logger is None:
@@ -70,12 +74,12 @@ def execute_kabupaten_kota_detail_batch(config, logger=None) -> Optional[Any]:
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise ValueError("Structure file not found, run structure extraction first")
+        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
 
     # Get all regency detail sections
     detail_df = kabupaten_kota_detail_struct(structure_path, config.province_filter)
     if len(detail_df) == 0:
-        raise ValueError("No kabupaten/kota detail found in structure")
+        raise BatchProcessingError("No kabupaten/kota detail found in structure", file_path=structure_path)
 
     total_details = len(detail_df)
     logger.info(f"Processing {total_details} kabupaten/kota details")
@@ -91,7 +95,7 @@ def execute_kabupaten_kota_detail_batch(config, logger=None) -> Optional[Any]:
         batch_end = min(batch_start + config.batch_size, total_details)
         batch_df = detail_df.slice(batch_start, batch_end)
 
-        logger.info(f"Processing batch {batch_start // config.batch_size + 1}: details {batch_start + 1}-{batch_end}")
+        logger.info(f"Processing batch {batch_start // config.batch_size + 1}: details {batch_start + 1}-{batch_end} ({total_details})")
 
         # Process batch
         if config.max_workers > 1:

@@ -7,6 +7,8 @@ across all scripts in the project.
 
 import os
 
+from utils.errors import FileOperationError, error_handler
+
 
 def get_project_root() -> str:
     """
@@ -45,6 +47,7 @@ def get_output_subdir(subdir: str) -> str:
     return os.path.join(get_output_dir(), subdir)
 
 
+@error_handler(operation_name="ensure_output_dirs", log_errors=True)
 def ensure_output_dirs() -> None:
     """Create all output subdirectories if they don't exist."""
     output_dir = get_output_dir()
@@ -52,11 +55,25 @@ def ensure_output_dirs() -> None:
 
     for subdir in subdirs:
         full_path = os.path.join(output_dir, subdir)
-        os.makedirs(full_path, exist_ok=True)
+        try:
+            os.makedirs(full_path, exist_ok=True)
+        except OSError as e:
+            raise FileOperationError(
+                f"Failed to create output subdirectory: {full_path}",
+                file_path=full_path,
+                operation="create_directory"
+            ) from e
 
     # Create debug subdirectory under json
     debug_dir = os.path.join(get_output_subdir("json"), "debug")
-    os.makedirs(debug_dir, exist_ok=True)
+    try:
+        os.makedirs(debug_dir, exist_ok=True)
+    except OSError as e:
+        raise FileOperationError(
+            f"Failed to create debug subdirectory: {debug_dir}",
+            file_path=debug_dir,
+            operation="create_directory"
+        ) from e
 
 
 # Convenience functions for common paths
@@ -65,6 +82,7 @@ def get_pdf_path(filename: str) -> str:
     return os.path.join(get_datas_dir(), filename)
 
 
+@error_handler(operation_name="ensure_file_directory", log_errors=True)
 def ensure_file_directory(filepath: str) -> None:
     """
     Ensure the directory for a file path exists.
@@ -74,7 +92,14 @@ def ensure_file_directory(filepath: str) -> None:
     """
     directory = os.path.dirname(filepath)
     if directory and not os.path.exists(directory):
-        os.makedirs(directory, exist_ok=True)
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except OSError as e:
+            raise FileOperationError(
+                f"Failed to create directory for file: {directory}",
+                file_path=directory,
+                operation="create_directory"
+            ) from e
 
 
 def get_csv_output_path(filename: str, ensure_dir: bool = False) -> str:

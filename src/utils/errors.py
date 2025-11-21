@@ -118,6 +118,26 @@ class ConfigurationError(PDFExtractorError):
             self.details["config_key"] = config_key
 
 
+class BatchProcessingError(PDFExtractorError):
+    """Exception raised when batch processing fails."""
+
+    def __init__(self, message: str, batch_id: Optional[str] = None, **kwargs):
+        super().__init__(message, error_code="BATCH_PROCESSING_ERROR", **kwargs)
+        self.batch_id = batch_id
+        if batch_id:
+            self.details["batch_id"] = batch_id
+
+
+class OCRError(PDFExtractorError):
+    """Exception raised when OCR processing fails."""
+
+    def __init__(self, message: str, ocr_engine: Optional[str] = None, **kwargs):
+        super().__init__(message, error_code="OCR_ERROR", **kwargs)
+        self.ocr_engine = ocr_engine
+        if ocr_engine:
+            self.details["ocr_engine"] = ocr_engine
+
+
 @contextmanager
 def error_handler(
     operation_name: str = "operation", log_errors: bool = True, re_raise: bool = True

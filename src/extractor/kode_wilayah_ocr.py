@@ -23,7 +23,7 @@ from marker.converters.table import TableConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
-from utils.normalize import kode_wilayah
+from utils.text_utils import kode_wilayah
 from utils.paths import (
     get_csv_output_path,
     get_datas_dir,

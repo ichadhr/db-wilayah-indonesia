@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Tuple
 
 import polars as pl
 
+from utils.errors import FileOperationError, ValidationError, error_handler, log_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,44 +25,66 @@ class CorrectionLoader:
             cls._instance._load_corrections()
         return cls._instance
 
+    @error_handler(operation_name="load_corrections", log_errors=True, re_raise=False)
     def _load_corrections(self):
         """Load corrections from CSV file."""
         csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
-        
+
         if not os.path.exists(csv_path):
-            logger.warning(f"Correction file not found: {csv_path}")
+            log_error(
+                FileOperationError(
+                    f"Correction file not found: {csv_path}",
+                    file_path=csv_path,
+                    operation="file_exists_check"
+                ),
+                "load_corrections",
+                "warning"
+            )
             return
 
         try:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
-                
+
                 # Validate CSV headers
                 expected_headers = {'fix_source', 'source_value', 'corrected_value'}
                 if not expected_headers.issubset(set(reader.fieldnames or [])):
-                    logger.error(f"Invalid CSV format. Expected headers: {expected_headers}, got: {reader.fieldnames}")
-                    return
-                
+                    raise ValidationError(
+                        f"Invalid CSV format. Expected headers: {expected_headers}, got: {reader.fieldnames}",
+                        field="csv_headers",
+                        value=str(reader.fieldnames)
+                    )
+
                 count = 0
                 for row in reader:
                     fix_source = row.get('fix_source', '').strip()
                     source_value = row.get('source_value', '').strip()
                     corrected_value = row.get('corrected_value', '').strip()
-                    
+
                     if not fix_source or not source_value:
                         continue
-                        
+
                     if fix_source not in self._corrections:
                         self._corrections[fix_source] = {}
                         self._metadata[fix_source] = {}
-                        
+
                     self._corrections[fix_source][source_value] = corrected_value
                     self._metadata[fix_source][source_value] = row
                     count += 1
-                
+
                 logger.info(f"Loaded {count} corrections from {csv_path}")
-        except Exception as e:
-            logger.error(f"Failed to load corrections: {e}")
+        except (IOError, OSError) as e:
+            raise FileOperationError(
+                f"Failed to read correction file: {str(e)}",
+                file_path=csv_path,
+                operation="file_read"
+            ) from e
+        except csv.Error as e:
+            raise ValidationError(
+                f"Invalid CSV format in correction file: {str(e)}",
+                field="csv_content",
+                value=csv_path
+            ) from e
 
     def get_correction(self, value: str, fix_source: str) -> Optional[str]:
         """
@@ -92,18 +116,38 @@ class CorrectionLoader:
             return self._metadata[fix_source].get(value)
         return None
 
+    @error_handler(operation_name="get_corrections_df", log_errors=True, re_raise=False)
     def get_corrections_df(self) -> Optional[pl.DataFrame]:
         """
         Get all corrections as a Polars DataFrame.
-        
+
         Returns:
             Polars DataFrame containing all corrections, or None if import fails
         """
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
         try:
-            csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
             if os.path.exists(csv_path):
                 return pl.read_csv(csv_path)
             return None
-        except Exception as e:
-            logger.error(f"Failed to load corrections DataFrame: {e}")
+        except (IOError, OSError) as e:
+            log_error(
+                FileOperationError(
+                    f"Failed to read correction file for DataFrame: {str(e)}",
+                    file_path=csv_path,
+                    operation="csv_read"
+                ),
+                "get_corrections_df",
+                "error"
+            )
+            return None
+        except pl.exceptions.PolarsError as e:
+            log_error(
+                ValidationError(
+                    f"Failed to parse corrections CSV: {str(e)}",
+                    field="csv_parsing",
+                    value=csv_path
+                ),
+                "get_corrections_df",
+                "error"
+            )
             return None

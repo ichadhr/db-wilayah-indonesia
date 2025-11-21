@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from utils.paths import get_json_output_path
+from utils.errors import FileOperationError, BatchProcessingError, log_error, error_handler
 # Import removed - using config.settings instead
 from .steps.structure_extraction import execute_structure_extraction
 from .steps.kode_wilayah_extraction import execute_kode_wilayah_extraction
@@ -115,6 +116,7 @@ class PipelineOrchestrator:
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
+    @error_handler(operation_name="save_pipeline_state", log_errors=True, re_raise=False)
     def _save_state(self):
         """Save current pipeline state for resumability."""
         try:
@@ -134,9 +136,27 @@ class PipelineOrchestrator:
             with open(self.state_file, 'w', encoding='utf-8') as f:
                 json.dump(state, f, indent=2, ensure_ascii=False)
             self.logger.info(f"Pipeline state saved to {self.state_file}")
-        except Exception as e:
-            self.logger.warning(f"Failed to save pipeline state: {e}")
+        except (IOError, OSError) as e:
+            log_error(
+                FileOperationError(
+                    f"Failed to save pipeline state: {str(e)}",
+                    file_path=self.state_file,
+                    operation="file_write"
+                ),
+                "save_pipeline_state",
+                "warning"
+            )
+        except (TypeError, ValueError) as e:
+            log_error(
+                BatchProcessingError(
+                    f"Failed to serialize pipeline state: {str(e)}",
+                    details={"error": str(e)}
+                ),
+                "save_pipeline_state",
+                "warning"
+            )
 
+    @error_handler(operation_name="load_pipeline_state", log_errors=True, re_raise=False)
     def _load_state(self) -> Dict[str, Any]:
         """Load previous pipeline state."""
         if not os.path.exists(self.state_file):
@@ -145,8 +165,26 @@ class PipelineOrchestrator:
         try:
             with open(self.state_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
-            self.logger.warning(f"Failed to load pipeline state: {e}")
+        except (IOError, OSError) as e:
+            log_error(
+                FileOperationError(
+                    f"Failed to read pipeline state file: {str(e)}",
+                    file_path=self.state_file,
+                    operation="file_read"
+                ),
+                "load_pipeline_state",
+                "warning"
+            )
+            return {}
+        except (json.JSONDecodeError, ValueError) as e:
+            log_error(
+                BatchProcessingError(
+                    f"Failed to parse pipeline state JSON: {str(e)}",
+                    details={"file_path": self.state_file}
+                ),
+                "load_pipeline_state",
+                "warning"
+            )
             return {}
 
     def _cleanup_resources(self):
@@ -272,8 +310,11 @@ class PipelineOrchestrator:
                 shutdown_event.set()
             self._handle_shutdown()
             return False
+        except (BatchProcessingError, FileOperationError) as e:
+            log_error(e, "pipeline_execution", "error")
+            return False
         except Exception as e:
-            self.logger.error(f"Pipeline execution failed: {e}")
+            log_error(e, "pipeline_execution", "error")
             return False
 
     def _execute_step(self, step: PipelineStep) -> bool:
@@ -329,8 +370,20 @@ class PipelineOrchestrator:
                 self.step_results.append(step_result)
                 return False
 
+        except (BatchProcessingError, FileOperationError) as e:
+            log_error(e, f"step_execution_{step.value}", "error")
+            end_time = datetime.now()
+            step_result = StepResult(
+                step=step,
+                success=False,
+                start_time=start_time,
+                end_time=end_time,
+                error_message=str(e)
+            )
+            self.step_results.append(step_result)
+            return False
         except Exception as e:
-            self.logger.error(f"Step {step.value} execution error: {e}")
+            log_error(e, f"step_execution_{step.value}", "error")
             end_time = datetime.now()
             step_result = StepResult(
                 step=step,
@@ -366,6 +419,56 @@ class PipelineOrchestrator:
     def _execute_kecamatan_batch(self) -> Optional[Any]:
         """Execute kecamatan index batch processing."""
         return execute_kecamatan_batch(self.config, self.logger)
+
+    # Public API methods for external callers
+    def execute_structure_extraction(self):
+        """Public API for structure extraction."""
+        return self._execute_structure_extraction()
+
+    def execute_kode_wilayah_extraction(self):
+        """Public API for kode wilayah extraction."""
+        return self._execute_kode_wilayah_extraction()
+
+    def execute_province_index_extraction(self):
+        """Public API for province index extraction."""
+        return self._execute_province_index_extraction()
+
+    def execute_kabupaten_kota_batch(self):
+        """Public API for kabupaten/kota batch processing."""
+        return self._execute_kabupaten_kota_batch()
+
+    def execute_kabupaten_kota_detail_batch(self):
+        """Public API for kabupaten/kota detail batch processing."""
+        return self._execute_kabupaten_kota_detail_batch()
+
+    def execute_kecamatan_batch(self):
+        """Public API for kecamatan batch processing."""
+        return self._execute_kecamatan_batch()
+
+    # Public API methods for external callers
+    def execute_structure_extraction(self):
+        """Public API for structure extraction."""
+        return self._execute_structure_extraction()
+
+    def execute_kode_wilayah_extraction(self):
+        """Public API for kode wilayah extraction."""
+        return self._execute_kode_wilayah_extraction()
+
+    def execute_province_index_extraction(self):
+        """Public API for province index extraction."""
+        return self._execute_province_index_extraction()
+
+    def execute_kabupaten_kota_batch(self):
+        """Public API for kabupaten/kota batch processing."""
+        return self._execute_kabupaten_kota_batch()
+
+    def execute_kabupaten_kota_detail_batch(self):
+        """Public API for kabupaten/kota detail batch processing."""
+        return self._execute_kabupaten_kota_detail_batch()
+
+    def execute_kecamatan_batch(self):
+        """Public API for kecamatan batch processing."""
+        return self._execute_kecamatan_batch()
 
     def _print_summary(self):
         """Print pipeline execution summary."""
