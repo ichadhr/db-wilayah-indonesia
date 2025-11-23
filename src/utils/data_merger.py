@@ -23,8 +23,7 @@ class ParquetFileMerger:
     def merge_province_parquet_files(
         parquet_dir: str,
         filename_pattern: str,
-        output_filename: str,
-        province_column_name: str = "provinsi"
+        output_filename: str
     ) -> str:
         """
         Generic method to merge parquet files from province subdirectories.
@@ -33,7 +32,6 @@ class ParquetFileMerger:
             parquet_dir: Base directory containing province folders
             filename_pattern: Glob pattern to match files (e.g., '*_kabupaten_kota_index.parquet')
             output_filename: Name for merged output file (without extension)
-            province_column_name: Column name for province identifier (default: 'provinsi')
             
         Returns:
             Path to merged parquet file
@@ -61,13 +59,6 @@ class ParquetFileMerger:
                 try:
                     logger.debug(f"Reading: {parquet_file}")
                     df = pl.read_parquet(parquet_file)
-                    
-                    # Add province column only if it doesn't already exist
-                    if province_column_name not in df.columns:
-                        df = df.with_columns(pl.lit(province_name).alias(province_column_name))
-                        logger.debug(f"Added '{province_column_name}' column for {province_name}")
-                    else:
-                        logger.debug(f"'{province_column_name}' column already exists in {province_name}")
                     
                     all_dataframes.append(df)
                     files_processed += 1
@@ -130,8 +121,7 @@ class ParquetFileMerger:
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kabupaten_kota_index.parquet",
-            output_filename="indonesia_kabupaten_kota_index",
-            province_column_name="provinsi"
+            output_filename="indonesia_kabupaten_kota_index"
         )
     
     @staticmethod
@@ -154,8 +144,7 @@ class ParquetFileMerger:
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kecamatan_index.parquet",
-            output_filename="indonesia_kecamatan_index",
-            province_column_name="provinsi"
+            output_filename="indonesia_kecamatan_index"
         )
     
     @staticmethod
@@ -178,6 +167,5 @@ class ParquetFileMerger:
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kabupaten_kota_detail.parquet",
-            output_filename="indonesia_kabupaten_kota_detail",
-            province_column_name="provinsi"
+            output_filename="indonesia_kabupaten_kota_detail"
         )
