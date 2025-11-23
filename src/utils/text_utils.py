@@ -211,7 +211,6 @@ def normalize_kecamatan(text: str) -> str:
 
     # Expand common abbreviations (case-insensitive)
     replacements = [
-        (r'^\d+', '', 0),  # Remove leading digits
         (r'\bKec\.\s*', 'Kecamatan ', re.IGNORECASE),
         # Add other abbreviations as needed
     ]
@@ -257,7 +256,7 @@ def normalize_kelurahan_desa(text: str) -> str:
 
 # Data normalization for kode wilayah processing
 import re
-from typing import Optional
+from typing import Optional, Any
 from models.kode_wilayah import KodeWilayah
 
 
@@ -316,7 +315,7 @@ def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
     return KodeWilayah(**cleaned)
 
 
-def _clean_field(value: any, uppercase: bool = False) -> str:
+def _clean_field(value: Any, uppercase: bool = False) -> str:
     """
     Clean a field value by removing HTML tags and trimming whitespace.
     

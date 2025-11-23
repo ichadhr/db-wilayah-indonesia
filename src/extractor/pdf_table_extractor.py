@@ -825,6 +825,8 @@ class PDFTableExtractor(PDFTableExtractorBase):
             'desa': ''
         }
 
+        district_counter = 0
+
         # Helper for safe row access (avoid shadowing)
         def safe_row_val(row_data: List[Any], idx: int, default: Any = "") -> Any:
             return row_data[idx] if len(row_data) > idx and row_data[idx] is not None else default
@@ -901,6 +903,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 subdistrict_village_data.append(data)
 
             elif len(kode_parts) == 2:  # Regency
+                district_counter = 0
                 current_regency.update({
                     'kabupaten_kota': provinsi_kabupaten
                 })
@@ -927,8 +930,12 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 subdistrict_village_data.append(data)
 
             elif len(kode_parts) == 3:  # District
+                district_counter += 1
+                kecamatan = safe_row_val(row, 4, "")
+                if kecamatan.startswith(str(district_counter)):
+                    kecamatan = kecamatan[len(str(district_counter)):].strip()
                 current_district.update({
-                    'kecamatan': safe_row_val(row, 4, ""),
+                    'kecamatan': kecamatan,
                     'kelurahan': safe_row_val(row, 5, ""),
                     'desa': safe_row_val(row, 6, "")
                 })
@@ -947,7 +954,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
                     kode_kabupaten_kota=kode_kabupaten_kota,
                     kabupaten_kota=current_regency['kabupaten_kota'],
                     kode_kecamatan=kode_kecamatan,
-                    kecamatan=safe_row_val(row, 4, ""),
+                    kecamatan=kecamatan,
                     kode_kelurahan="",
                     kelurahan="",
                     desa=""
