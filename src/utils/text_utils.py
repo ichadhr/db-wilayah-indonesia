@@ -149,6 +149,7 @@ def normalize_kabupaten_kota(text: str) -> str:
     replacements = [
         (r'^\d+\.?\s+', '', 0),
         (r'^kab\s+', 'Kabupaten ', re.IGNORECASE),
+        (r'\bKab\.\s*', 'Kabupaten ', re.IGNORECASE),
         (r'\badm\.\s+', 'Administrasi ', re.IGNORECASE),
         (r'\bKep\.\s+', 'Kepulauan ', re.IGNORECASE),
         # Add other abbreviations as needed
@@ -211,6 +212,7 @@ def normalize_kecamatan(text: str) -> str:
 
     # Expand common abbreviations (case-insensitive)
     replacements = [
+        (r'^\d+\.?\s+', '', 0),  # Remove leading numbers
         (r'\bKec\.\s*', 'Kecamatan ', re.IGNORECASE),
         # Add other abbreviations as needed
     ]
@@ -241,7 +243,7 @@ def normalize_kelurahan_desa(text: str) -> str:
 
     # Expand common abbreviations (case-insensitive)
     replacements = [
-        (r'^\d+\.?\s+', '', 0),  # Existing: Remove leading numbers
+        (r'^\d+\.?\s+', '', 0),  # Remove leading numbers
         (r'\bKel\.\s*', 'Kelurahan ', re.IGNORECASE),
         (r'\bDs\.\s*', 'Desa ', re.IGNORECASE),
         (r'\bKamp\.\s*', 'Kampung ', re.IGNORECASE),

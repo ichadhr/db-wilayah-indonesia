@@ -6,11 +6,12 @@ Utility for merging province-specific parquet files into consolidated datasets
 import os
 import polars as pl
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Callable
 import logging
 
 from utils.paths import get_parquet_output_path
 from utils.errors import error_handler, FileOperationError
+from utils.text_utils import normalize_kelurahan_desa, normalize_kecamatan
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +24,23 @@ class ParquetFileMerger:
     def merge_province_parquet_files(
         parquet_dir: str,
         filename_pattern: str,
-        output_filename: str
+        output_filename: str,
+        filters: Optional[list[str]] = None,
+        clean_columns: Optional[Dict[str, Callable[[str], str]]] = None
     ) -> str:
         """
         Generic method to merge parquet files from province subdirectories.
-        
+
         Args:
             parquet_dir: Base directory containing province folders
             filename_pattern: Glob pattern to match files (e.g., '*_kabupaten_kota_index.parquet')
             output_filename: Name for merged output file (without extension)
-            
+            filters: Optional list of column names to filter out empty strings (e.g., ['kode_kelurahan'])
+            clean_columns: Optional dict mapping column names to cleaning functions for leading numbers
+
         Returns:
             Path to merged parquet file
-            
+
         Raises:
             FileOperationError: If no parquet files found or merge fails
         """
@@ -83,6 +88,18 @@ class ParquetFileMerger:
         # Merge all DataFrames
         logger.info("Concatenating dataframes...")
         merged_df = pl.concat(all_dataframes, how="vertical")
+
+        # Apply filters if specified
+        if filters:
+            for col in filters:
+                if col in merged_df.columns:
+                    logger.info(f"Filtering out rows with empty {col}...")
+                    merged_df = merged_df.filter(pl.col(col) != '')
+
+        # Clean leading numbers if specified
+        if clean_columns:
+            merged_df = ParquetFileMerger.clean_leading_numbers(merged_df, clean_columns)
+
         total_records = len(merged_df)
         logger.info(f"Merged {files_processed} files into {total_records} records")
         
@@ -100,6 +117,26 @@ class ParquetFileMerger:
         logger.info(f"  Total records: {total_records}")
         
         return output_path
+
+    @staticmethod
+    def clean_leading_numbers(df: pl.DataFrame, clean_columns: Dict[str, Callable[[str], str]]) -> pl.DataFrame:
+        """
+        Clean leading numbers from specified columns using provided functions.
+
+        Args:
+            df: Polars DataFrame to clean
+            clean_columns: Dictionary mapping column names to cleaning functions
+
+        Returns:
+            DataFrame with cleaned columns
+        """
+        for col, clean_func in clean_columns.items():
+            if col in df.columns:
+                logger.info(f"Cleaning leading numbers from column: {col}")
+                df = df.with_columns(
+                    pl.col(col).map_elements(lambda x: clean_func(str(x)) if x else "", return_dtype=pl.Utf8)
+                )
+        return df
     
     @staticmethod
     def merge_kabupaten_kota_index(parquet_dir: Optional[str] = None) -> str:
@@ -144,7 +181,9 @@ class ParquetFileMerger:
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kecamatan_index.parquet",
-            output_filename="indonesia_kecamatan_index"
+            output_filename="indonesia_kecamatan_index",
+            filters=["kode_kecamatan"],
+            clean_columns={"kecamatan": normalize_kecamatan}
         )
     
     @staticmethod
@@ -167,5 +206,7 @@ class ParquetFileMerger:
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kabupaten_kota_detail.parquet",
-            output_filename="indonesia_kabupaten_kota_detail"
+            output_filename="indonesia_kabupaten_kota_detail",
+            filters=["kode_kelurahan"],
+            clean_columns={"kelurahan": normalize_kelurahan_desa, "desa": normalize_kelurahan_desa}
         )
