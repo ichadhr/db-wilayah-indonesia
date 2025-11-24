@@ -81,7 +81,7 @@ class ProgressManager:
             total=total_items,
             desc=description,
             unit="item",
-            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}{postfix}]",
+            bar_format="{desc} {percentage:3.0f}%|{bar}| {n}/{total} [{elapsed} < {remaining}{postfix}]",
         )
 
         # Set initial postfix
@@ -169,6 +169,10 @@ class DownloadProgressContext:
         # Update postfix with current rate
         rate = self.progress_bar.format_dict.get("rate", 0) or 0
         self.progress_bar.set_postfix_str(f"{rate:.0f} items/s")
+
+    def update(self, description: str):
+        """Update the progress bar description."""
+        self.progress_bar.set_description(description)
 
 
 class TableExtractionProgressContext:
