@@ -13,7 +13,7 @@ import glob
 import re
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
+from typing import List, Optional
 
 import polars as pl
 
@@ -100,7 +100,7 @@ class PosWilayahExtractor:
                 with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                     # Submit all tasks
                     future_to_kabkota = {
-                        executor.submit(self._scrape_single, province, kabupaten_kota): kabupaten_kota
+                        executor.submit(self._scrape_single, province, kabupaten_kota, kabupaten_kota): kabupaten_kota
                         for kabupaten_kota in kabupaten_kota_list
                     }
                     
@@ -164,13 +164,14 @@ class PosWilayahExtractor:
             province_dict[province] = kabupaten_kota_list
         return province_dict
 
-    def _scrape_single(self, province: str, kabupaten_kota: str) -> List[PosWilayah]:
+    def _scrape_single(self, province: str, kabupaten_kota: str, kabupaten_kota_source: Optional[str] = None) -> List[PosWilayah]:
         """
         Scrape postal codes for a single kabupaten/kota.
 
         Args:
             province: Province name for logging
             kabupaten_kota: Name of the kabupaten/kota
+            kabupaten_kota_source: Original name from index file (for joining with details)
 
         Returns:
             List of PosWilayah objects
@@ -248,7 +249,12 @@ class PosWilayahExtractor:
                 return []
 
             # Instantiate PosWilayah objects only for filtered results
-            pos_wilayah_results = [PosWilayah(**res) for res in filtered_results]
+            # Add kabupaten_kota_source to preserve original name from index
+            source_name = kabupaten_kota_source if kabupaten_kota_source else kabupaten_kota
+            pos_wilayah_results = [
+                PosWilayah(**res, kabupaten_kota_source=source_name) 
+                for res in filtered_results
+            ]
 
             return pos_wilayah_results
             

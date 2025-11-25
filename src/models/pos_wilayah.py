@@ -11,8 +11,9 @@ class PosWilayah(BaseModel):
     kecamatan: str
     kabupaten_kota: str
     provinsi: str
+    kabupaten_kota_source: str  # Original name from index file for joining
 
-    @field_validator("kodepos", "desa_kelurahan", "kecamatan", "kabupaten_kota", "provinsi", mode="before")
+    @field_validator("kodepos", "desa_kelurahan", "kecamatan", "kabupaten_kota", "provinsi", "kabupaten_kota_source", mode="before")
     @classmethod
     def validate_str_fields(cls, v):
         """Normalize string fields to clean newlines and extra whitespace."""

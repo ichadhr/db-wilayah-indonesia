@@ -243,7 +243,8 @@ def normalize_kelurahan_desa(text: str) -> str:
 
     # Expand common abbreviations (case-insensitive)
     replacements = [
-        (r'^\d+\.?\s+', '', 0),  # Remove leading numbers
+        (r'^\d+\s+', '', 0),  # Remove leading numbers (handles "1 ", "18 ", "123 ", etc.)
+        (r'^\d+\.\s*', '', 0),  # Remove leading numbers with dot (handles "1.", "1. ", etc.)
         (r'\bKel\.\s*', 'Kelurahan ', re.IGNORECASE),
         (r'\bDs\.\s*', 'Desa ', re.IGNORECASE),
         (r'\bKamp\.\s*', 'Kampung ', re.IGNORECASE),
