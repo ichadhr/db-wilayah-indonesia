@@ -13,6 +13,7 @@ from utils.paths import get_parquet_output_path, get_json_output_path
 from pipeline.orchestrator import PipelineOrchestrator, PipelineConfig
 from utils.errors import log_error, BatchProcessingError, PDFExtractorError
 from utils.paths import ensure_output_dirs
+from extractor.pos_wilayah import PosWilayahExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,11 @@ def main():
         "--merge-only",
         action="store_true",
         help="Run only the parquet merge step"
+    )
+    group.add_argument(
+        "--pos-only",
+        action="store_true",
+        help="Run only the postal code extraction step"
     )
     args = parser.parse_args()
 
@@ -176,6 +182,16 @@ def main():
         else:
             error_msg = result.error_message if result else "Unknown error"
             log_error(BatchProcessingError(f"Parquet merge failed: {error_msg}", operation="parquet_merge"), "main_pipeline")
+            exit(1)
+    elif args.pos_only:
+        # Run only the postal code extraction step
+        logger.info("Running postal code extraction step only")
+        extractor = PosWilayahExtractor(parquet_dir="output", max_workers=config.max_workers)
+        stats = extractor.extract_pos_wilayah(logger=logger, province_filter=config.province_filter)
+        if stats["total_processed"] > 0:
+            logger.info("Postal code extraction completed successfully")
+        else:
+            log_error(BatchProcessingError("Postal code extraction failed: no data processed", operation="pos_extraction"), "main_pipeline")
             exit(1)
     else:
         # Execute full pipeline

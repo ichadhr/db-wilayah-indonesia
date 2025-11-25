@@ -24,10 +24,12 @@ class PDFExtractorError(Exception):
         message: str,
         error_code: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ):
         self.message = message
         self.error_code = error_code or "PDF_EXTRACTOR_ERROR"
         self.details = details or {}
+        self.details.update(kwargs)
         super().__init__(self.message)
 
 
