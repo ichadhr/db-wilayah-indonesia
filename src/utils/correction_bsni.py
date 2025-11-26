@@ -1,7 +1,7 @@
 import os
 import csv
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 import polars as pl
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class CorrectionLoader:
     """
-    Loads and applies corrections from correction.csv.
+    Loads and applies corrections from correction_bsni.csv.
     """
     
     _instance = None
@@ -28,12 +28,12 @@ class CorrectionLoader:
     @error_handler(operation_name="load_corrections", log_errors=True, re_raise=False)
     def _load_corrections(self):
         """Load corrections from CSV file."""
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction_bsni.csv")
 
         if not os.path.exists(csv_path):
             log_error(
                 FileOperationError(
-                    f"Correction file not found: {csv_path}",
+                    f"Correction bsni file not found: {csv_path}",
                     file_path=csv_path,
                     operation="file_exists_check"
                 ),
@@ -75,13 +75,13 @@ class CorrectionLoader:
                 logger.info(f"Loaded {count} corrections from {csv_path}")
         except (IOError, OSError) as e:
             raise FileOperationError(
-                f"Failed to read correction file: {str(e)}",
+                f"Failed to read correction bsni file: {str(e)}",
                 file_path=csv_path,
                 operation="file_read"
             ) from e
         except csv.Error as e:
             raise ValidationError(
-                f"Invalid CSV format in correction file: {str(e)}",
+                f"Invalid CSV format in correction bsni file: {str(e)}",
                 field="csv_content",
                 value=csv_path
             ) from e
@@ -124,7 +124,7 @@ class CorrectionLoader:
         Returns:
             Polars DataFrame containing all corrections, or None if import fails
         """
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction_bsni.csv")
         try:
             if os.path.exists(csv_path):
                 return pl.read_csv(csv_path)
@@ -132,7 +132,7 @@ class CorrectionLoader:
         except (IOError, OSError) as e:
             log_error(
                 FileOperationError(
-                    f"Failed to read correction file for DataFrame: {str(e)}",
+                    f"Failed to read correction bsni file for DataFrame: {str(e)}",
                     file_path=csv_path,
                     operation="csv_read"
                 ),
@@ -143,7 +143,7 @@ class CorrectionLoader:
         except pl.exceptions.PolarsError as e:
             log_error(
                 ValidationError(
-                    f"Failed to parse corrections CSV: {str(e)}",
+                    f"Failed to parse corrections bsni CSV: {str(e)}",
                     field="csv_parsing",
                     value=csv_path
                 ),
