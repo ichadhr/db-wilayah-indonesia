@@ -41,7 +41,19 @@ from .correction import CorrectionLoader
 from .data_merger import ParquetFileMerger
 
 # Text normalization and conversion utilities
-from .text_utils import kode_wilayah
+from .text_utils import (
+    format_number,
+    format_luas,
+    format_pulau,
+    format_string,
+    format_text,
+    normalize_for_matching,
+    convert_cyrillic_to_latin,
+    normalize_kabupaten_kota,
+    normalize_kecamatan,
+    normalize_kelurahan_desa,
+    kode_wilayah
+)
 
 # Progress tracking
 from .progress import progress_manager
@@ -80,6 +92,16 @@ __all__ = [
     # Data merger
     'ParquetFileMerger',
     # Normalization
+    'format_number',
+    'format_luas',
+    'format_pulau',
+    'format_string',
+    'format_text',
+    'normalize_for_matching',
+    'convert_cyrillic_to_latin',
+    'normalize_kabupaten_kota',
+    'normalize_kecamatan',
+    'normalize_kelurahan_desa',
     'kode_wilayah',
     # Progress
     'progress_manager',

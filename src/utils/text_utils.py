@@ -1,3 +1,8 @@
+import re
+from typing import Any, Optional
+from src.models.kode_wilayah import KodeWilayah
+
+
 def format_number(s):
     return str(s).replace(".", "")
 
@@ -40,6 +45,90 @@ def format_string(s):
     return s
 
 
+def format_text(text: str) -> str:
+    """
+    Normalize text by cleaning whitespace and newlines.
+
+    This is a general-purpose text cleaning function that:
+    - Replaces newlines and tabs with spaces
+    - Normalizes multiple whitespace to single spaces
+    - Strips leading/trailing whitespace
+
+    Used for general text processing (not CSV-specific).
+    """
+    if text is None:
+        return ""
+
+    # Convert to string
+    text = str(text)
+
+    # Replace newlines, carriage returns, and tabs with spaces
+    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+
+    # Normalize whitespace (multiple spaces become single space)
+    text = ' '.join(text.split())
+
+    return text.strip()
+
+
+def normalize_for_matching(text: str, field_type: str = 'kelurahan') -> str:
+    """
+    Normalize Indonesian place names for fuzzy matching.
+    
+    Handles:
+    - Phonetic variations (o↔u, ie↔i, etc.)
+    - Common abbreviations
+    - Whitespace normalization
+    
+    Args:
+        text: Input text to normalize
+        field_type: Type of field ('kelurahan' or 'kecamatan')
+        
+    Returns:
+        Normalized text ready for fuzzy matching
+    """
+    if not text:
+        return ""
+    
+    # Start with base normalization
+    text = format_text(text)
+    text = text.lower()
+    
+    # Indonesian phonetic normalizations
+    phonetic_replacements = {
+        # Vowel variations (common in Acehnese)
+        'oe': 'u',  # Dutch spelling  
+        'ö': 'o',
+        'ü': 'u',
+        
+        # Consonant variations
+        'dj': 'j',  # Old Indonesian spelling
+        'sy': 'sh',
+        'tj': 'c',
+        
+        # Specific Acehnese patterns
+        'ue': 'u',  # Alue → Alu
+        'lh': 'l',  # Acehnese glottal
+        'eum': 'um',  # Geulumpang → Glumpang variations
+    }
+    
+    for old, new in phonetic_replacements.items():
+        text = text.replace(old, new)
+    
+    # Normalize common prefix variations
+    if field_type == 'kelurahan':
+        # Remove numbered prefixes
+        text = re.sub(r'^\d+\s*[-.]?\s*', '', text)
+        
+        # Expand abbreviations
+        text = re.sub(r'\b(kel|ds|desa|kampung|kamp|dusun|dus)\.?\s+', '', text, flags=re.IGNORECASE)
+    
+    # Remove multiple spaces
+    text = ' '.join(text.split())
+    
+    return text.strip()
+
+
 def convert_cyrillic_to_latin(text: str) -> str:
     """
     Convert Cyrillic characters that look like Latin digits to their Latin equivalents.
@@ -49,13 +138,10 @@ def convert_cyrillic_to_latin(text: str) -> str:
         text: Input text that may contain Cyrillic characters
 
     Returns:
-        Text with Cyrillic look-alike characters converted to Latin
+        Text with Cyrillic characters converted to Latin equivalents
     """
-    if not text:
-        return text
-
-    # Mapping of Cyrillic characters that look like Latin digits
-    cyr_to_lat = {
+    # Mapping of Cyrillic characters to Latin equivalents
+    cyrillic_to_latin_map = {
         # Digits that look similar
         "З": "3",
         "Б": "8",
@@ -92,181 +178,25 @@ def convert_cyrillic_to_latin(text: str) -> str:
         "і": "i",
         "ї": "i",
         "ё": "e",
+        # Additional mappings from original function
+        "з": "3",
+        "б": "6",
+        "Ч": "4",
+        "ч": "4",
+        "ү": "y",
     }
 
     result = text
-    for cyr, lat in cyr_to_lat.items():
-        result = result.replace(cyr, lat)
+    for cyrillic, latin in cyrillic_to_latin_map.items():
+        result = result.replace(cyrillic, latin)
 
     return result
-
-
-def format_text(text: str) -> str:
-    """
-    Normalize text by cleaning whitespace and newlines.
-
-    This is a general-purpose text cleaning function that:
-    - Replaces newlines and tabs with spaces
-    - Normalizes multiple whitespace to single spaces
-    - Strips leading/trailing whitespace
-
-    Used for general text processing (not CSV-specific).
-    """
-    if text is None:
-        return ""
-
-    # Convert to string
-    text = str(text)
-
-    # Replace newlines, carriage returns, and tabs with spaces
-    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-
-    # Normalize whitespace (multiple spaces become single space)
-    text = ' '.join(text.split())
-
-    return text.strip()
-
-
-def normalize_kabupaten_kota(text: str) -> str:
-    """
-    Normalize kabupaten/kota names by expanding abbreviations.
-
-    Args:
-        text: Input text that may contain abbreviations
-
-    Returns:
-        Text with abbreviations expanded to full forms
-    """
-    import re
-
-    if not text:
-        return ""
-
-    # First clean the text
-    text = format_text(text)
-
-    # Expand common abbreviations (case-insensitive)
-    replacements = [
-        (r'^\d+\.?\s+', '', 0),
-        (r'^kab\s+', 'Kabupaten ', re.IGNORECASE),
-        (r'\bKab\.\s*', 'Kabupaten ', re.IGNORECASE),
-        (r'\badm\.\s+', 'Administrasi ', re.IGNORECASE),
-        (r'\bKep\.\s+', 'Kepulauan ', re.IGNORECASE),
-        # Add other abbreviations as needed
-    ]
-
-    for pattern, replacement, flags in replacements:
-        text = re.sub(pattern, replacement, text, flags=flags)
-
-    return text
-
-
-def normalize_ibukota_kabupaten_kota(text: str) -> str:
-    """
-    Normalize ibukota/kabupaten/kota names by expanding abbreviations and removing suffixes.
-
-    Args:
-        text: Input text that may contain abbreviations or suffixes
-
-    Returns:
-        Text with abbreviations expanded to full forms and suffixes removed
-    """
-    import re
-
-    if not text:
-        return ""
-
-    # First clean the text
-    text = format_text(text)
-
-    # Expand common abbreviations and remove suffixes (case-insensitive)
-    replacements = [
-        (r', Kec\..*$', '', re.IGNORECASE),
-        (r'\bP\.\s+', 'Pulau ', re.IGNORECASE)
-        # Add other abbreviations as needed
-    ]
-
-    for pattern, replacement, flags in replacements:
-        text = re.sub(pattern, replacement, text, flags=flags)
-
-    return text
-
-
-def normalize_kecamatan(text: str) -> str:
-    """
-    Normalize kecamatan names by expanding abbreviations.
-
-    Args:
-        text: Input text that may contain abbreviations
-
-    Returns:
-        Text with abbreviations expanded to full forms
-    """
-    import re
-
-    if not text:
-        return ""
-
-    # First clean the text
-    text = format_text(text)
-
-    # Expand common abbreviations (case-insensitive)
-    replacements = [
-        (r'^\d+\.?\s+', '', 0),  # Remove leading numbers
-        (r'\bKec\.\s*', 'Kecamatan ', re.IGNORECASE),
-        # Add other abbreviations as needed
-    ]
-
-    for pattern, replacement, flags in replacements:
-        text = re.sub(pattern, replacement, text, flags=flags)
-
-    return text
-
-
-def normalize_kelurahan_desa(text: str) -> str:
-    """
-    Normalize kelurahan/desa names by expanding abbreviations.
-
-    Args:
-        text: Input text that may contain abbreviations
-
-    Returns:
-        Text with abbreviations expanded to full forms
-    """
-    import re
-
-    if not text:
-        return ""
-
-    # First clean the text
-    text = format_text(text)
-
-    # Expand common abbreviations (case-insensitive)
-    replacements = [
-        (r'^\d+\s+', '', 0),  # Remove leading numbers (handles "1 ", "18 ", "123 ", etc.)
-        (r'^\d+\.\s*', '', 0),  # Remove leading numbers with dot (handles "1.", "1. ", etc.)
-        (r'\bKel\.\s*', 'Kelurahan ', re.IGNORECASE),
-        (r'\bDs\.\s*', 'Desa ', re.IGNORECASE),
-        (r'\bKamp\.\s*', 'Kampung ', re.IGNORECASE),
-        (r'\bDus\.\s*', 'Dusun ', re.IGNORECASE),
-    ]
-
-    for pattern, replacement, flags in replacements:
-        text = re.sub(pattern, replacement, text, flags=flags)
-
-    return text
-
-
-# Data normalization for kode wilayah processing
-import re
-from typing import Optional, Any
-from models.kode_wilayah import KodeWilayah
 
 
 def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
     """
     Normalize and create KodeWilayah instance from raw OCR record.
-    
+
     This function processes raw OCR data by:
     - Converting Cyrillic characters to Latin equivalents
     - Extracting and validating the 'no' field
@@ -280,7 +210,7 @@ def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
     Returns:
         KodeWilayah instance if valid, None if the record is invalid
         (e.g., missing or invalid 'no' field)
-        
+
     Example:
         >>> raw = {
         ...     'no': '1',
@@ -318,6 +248,118 @@ def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
     return KodeWilayah(**cleaned)
 
 
+def normalize_kabupaten_kota(text: str) -> str:
+    """
+    Normalize kabupaten/kota names by expanding abbreviations.
+
+    Args:
+        text: Input kabupaten/kota name
+
+    Returns:
+        Normalized kabupaten/kota name
+    """
+    if not text:
+        return ""
+
+    # Convert to title case for consistency
+    text = text.strip()
+
+    # Expand common abbreviations
+    replacements = {
+        r'\bKab\.\s*': 'Kabupaten ',
+        r'\bKab\b': 'Kabupaten',
+        r'\bKota\b': 'Kota',
+    }
+
+    for pattern, replacement in replacements.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Clean up extra spaces
+    text = ' '.join(text.split())
+
+    return text
+
+
+def normalize_kecamatan(text: str) -> str:
+    """
+    Normalize kecamatan names by removing leading numbers and expanding abbreviations.
+
+    Args:
+        text: Input kecamatan name
+
+    Returns:
+        Normalized kecamatan name
+    """
+    if not text:
+        return ""
+
+    # Handle newlines, tabs, and carriage returns
+    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+
+    text = text.strip()
+
+    # Remove leading numbers (e.g., "1. Name" → "Name")
+    text = re.sub(r'^\d+\.?\s+', '', text)
+
+    # Expand abbreviations
+    replacements = {
+        r'(?i)\bKec\.\s*': 'Kecamatan ',
+        r'(?i)\bKec\b': 'Kecamatan',
+    }
+
+    for pattern, replacement in replacements.items():
+        text = re.sub(pattern, replacement, text)
+
+    # Clean up extra spaces
+    text = ' '.join(text.split())
+
+    return text
+
+
+def normalize_kelurahan_desa(text: str) -> str:
+    """
+    Normalize kelurahan/desa names by removing leading numbers and expanding abbreviations.
+
+    Args:
+        text: Input kelurahan/desa name
+
+    Returns:
+        Normalized kelurahan/desa name
+    """
+    if not text:
+        return ""
+
+    # Handle newlines, tabs, and carriage returns
+    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+
+    text = text.strip()
+
+    # Remove leading numbers (e.g., "1. Name" → "Name")
+    text = re.sub(r'^\d+\.?\s+', '', text)
+
+    # Expand abbreviations
+    replacements = {
+        r'(?i)\bKel\.\s*': 'Kelurahan ',
+        r'(?i)\bKel\b': 'Kelurahan',
+        r'(?i)\bDs\.\s*': 'Desa ',
+        r'(?i)\bDs\b': 'Desa',
+        r'(?i)\bDesa\b': 'Desa',
+        r'(?i)\bKelurahan\b': 'Kelurahan',
+        r'(?i)\bKamp\.\s*': 'Kampung ',
+        r'(?i)\bKamp\b': 'Kampung',
+        r'(?i)\bDus\.\s*': 'Dusun ',
+        r'(?i)\bDus\b': 'Dusun',
+    }
+
+    for pattern, replacement in replacements.items():
+        text = re.sub(pattern, replacement, text)
+
+    # Clean up extra spaces
+    text = ' '.join(text.split())
+
+    return text
+
+
 def _clean_field(value: Any, uppercase: bool = False) -> str:
     """
     Clean a field value by removing HTML tags and trimming whitespace.
@@ -331,4 +373,3 @@ def _clean_field(value: Any, uppercase: bool = False) -> str:
     """
     cleaned = str(value).strip().replace("<br>", " ")
     return cleaned.upper() if uppercase else cleaned
-
