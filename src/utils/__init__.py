@@ -35,7 +35,7 @@ from .paths import (
 )
 
 # Correction utilities
-from .correction import CorrectionLoader
+from .correction_bsni import CorrectionLoader
 
 # Data merger utilities
 from .data_merger import ParquetFileMerger
