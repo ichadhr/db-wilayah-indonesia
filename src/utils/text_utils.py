@@ -1,6 +1,8 @@
 import re
-from typing import Any, Optional
-from src.models.kode_wilayah import KodeWilayah
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.kode_wilayah import KodeWilayah
 
 
 def format_number(s):
@@ -193,7 +195,7 @@ def convert_cyrillic_to_latin(text: str) -> str:
     return result
 
 
-def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
+def kode_wilayah(raw_record: dict) -> Optional["KodeWilayah"]:
     """
     Normalize and create KodeWilayah instance from raw OCR record.
 
@@ -221,6 +223,8 @@ def kode_wilayah(raw_record: dict) -> Optional[KodeWilayah]:
         >>> kw.no
         1
     """
+    from models.kode_wilayah import KodeWilayah
+
     # Convert Cyrillic characters
     processed = {}
     for key, value in raw_record.items():
@@ -276,6 +280,36 @@ def normalize_kabupaten_kota(text: str) -> str:
 
     # Clean up extra spaces
     text = ' '.join(text.split())
+
+    return text
+
+
+def normalize_ibukota_kabupaten_kota(text: str) -> str:
+    """
+    Normalize ibukota/kabupaten/kota names by expanding abbreviations and removing suffixes.
+
+    Args:
+        text: Input text that may contain abbreviations or suffixes
+
+    Returns:
+        Text with abbreviations expanded to full forms and suffixes removed
+    """
+
+    if not text:
+        return ""
+
+    # First clean the text
+    text = format_text(text)
+
+    # Expand common abbreviations and remove suffixes (case-insensitive)
+    replacements = [
+        (r', Kec\..*$', '', re.IGNORECASE),
+        (r'\bP\.\s+', 'Pulau ', re.IGNORECASE)
+        # Add other abbreviations as needed
+    ]
+
+    for pattern, replacement, flags in replacements:
+        text = re.sub(pattern, replacement, text, flags=flags)
 
     return text
 
