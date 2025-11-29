@@ -302,6 +302,10 @@ class PosWilayahExtractor:
             # Convert PosWilayah objects to dictionaries for DataFrame
             results_dicts = [result.model_dump() for result in results]
             df = pl.DataFrame(results_dicts)
+            
+            # Deduplicate records to ensure 1-to-1 mapping capability
+            df = df.unique()
+            
             df.write_parquet(file_path)
             logger.info(f"Successfully saved {len(results)} entries to: {file_path}")
             print(f"\nSaved {len(results)} entries to: {file_path}")
@@ -312,9 +316,14 @@ class PosWilayahExtractor:
 
 # For backward compatibility, if run as script
 if __name__ == "__main__":
-    import sys
-    province_filter = sys.argv[1] if len(sys.argv) > 1 else None
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Extract postal codes for Indonesian regions')
+    parser.add_argument('--province', type=str, help='Specific province to process (e.g., aceh)')
+    
+    args = parser.parse_args()
+    
     with error_handler("postal_code_processing"):
         extractor = PosWilayahExtractor(parquet_dir="output")
-        stats = extractor.extract_pos_wilayah(province_filter=province_filter)
+        stats = extractor.extract_pos_wilayah(province_filter=args.province)
         print(f"Processing completed: {stats}")

@@ -11,7 +11,7 @@ in two stages:
 
 Output files (with _new suffix):
 - {province}_kabupaten_kota_with_pos_new.parquet: All detail records with postal codes
-- {province}_cascading_matches_new.parquet: Diagnostic file with similarity scores  
+- {province}_cascading_matches_new.csv: Diagnostic file with similarity scores
 - {province}_cascading_matches_remain_new.parquet: Unmapped POS records
 """
 
@@ -33,7 +33,7 @@ from utils.matcher import (
     perform_exact_join,
     cascading_fuzzy_match,
     save_parquet_with_pos,
-    save_diagnostic_parquet,
+    save_diagnostic_csv,
     save_unmapped_pos_parquet
 )
 
@@ -97,6 +97,8 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         detail_normalized = normalize_detail_data(detail_df, province)
         pos_normalized = normalize_pos_data(pos_df, province)
         
+        print(f"Detail normalized: {len(detail_normalized):,} records")
+        
         exact_matches, unmatched_detail, unmapped_pos = perform_exact_join(
             detail_normalized,
             pos_normalized
@@ -126,19 +128,19 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         
         # Output 1: Combined parquet with postal codes
         save_parquet_with_pos(
-            detail_df,
+            detail_normalized,
             exact_matches,
             fuzzy_matches,
             final_unmatched_detail,
             province_log_dir / f"{province}_kabupaten_kota_with_pos_new.parquet"
         )
         
-        # Output 2: Diagnostic parquet with similarity scores
-        save_diagnostic_parquet(
+        # Output 2: Diagnostic CSV with similarity scores
+        save_diagnostic_csv(
             exact_matches,
             fuzzy_matches,
             final_unmatched_detail,
-            province_log_dir / f"{province}_cascading_matches_new.parquet"
+            province_log_dir / f"{province}_cascading_matches_new.csv"
         )
         
         # Output 3: Unmapped POS records
@@ -148,7 +150,8 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         )
         
         # Print summary statistics
-        total_detail = len(detail_df)
+        # Use detail_normalized (after kode_kelurahan filter) as the true total
+        total_detail = len(detail_normalized)
         total_matched = len(exact_matches) + len(fuzzy_matches)
         match_rate = (total_matched / total_detail * 100) if total_detail > 0 else 0
         
@@ -163,7 +166,11 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         print(f"{'='*80}\n")
         
     except Exception as e:
-        print(f"\nERROR processing {province}: {e}")
+        import traceback
+        print(f"\n{'='*80}")
+        print(f"ERROR processing {province}")
+        print(f"{'='*80}")
+        print(traceback.format_exc())
         raise
 
 

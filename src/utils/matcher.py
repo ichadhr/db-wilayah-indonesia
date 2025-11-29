@@ -11,7 +11,8 @@ scoring_cascading_polars.py (fuzzy matching) into reusable utility functions.
 import polars as pl
 import polars_ds as pds
 from pathlib import Path
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List
+from polars.type_aliases import ConcatMethod
 
 from utils.text_utils import normalize_kecamatan, normalize_kelurahan_desa, normalize_for_matching
 
@@ -22,6 +23,10 @@ KABUPATEN_THRESHOLD = 0.95
 KECAMATAN_THRESHOLD = 0.75
 KELURAHAN_THRESHOLD = 0.70
 OVERALL_THRESHOLD = 0.80
+
+# Similarity weights for overall confidence calculation
+KECAMATAN_WEIGHT = 0.4
+KELURAHAN_WEIGHT = 0.6
 
 
 # ============================================================================
@@ -180,6 +185,10 @@ def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str) -> pl.DataFrame:
     """
     Add normalized columns for fuzzy similarity calculation.
     
+    IMPORTANT: Uses pre-normalized columns (from exact matching phase) as inputs.
+    This matches the behavior of scoring_cascading_polars.py which reads from CSV
+    files that contain pre-normalized kelurahan_desa values.
+    
     Args:
         df: Input dataframe (detail or pos)
         prefix: Prefix for columns ('detail' or 'pos')
@@ -187,30 +196,38 @@ def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str) -> pl.DataFrame:
     Returns:
         DataFrame with normalized fuzzy-matching columns and row index
     """
-    # Determine column names based on source
+    # NOTE: normalize_for_matching() only removes ABBREVIATED prefixes (kel, ds, etc.),
+    # not expanded ones (Kelurahan, Desa). So applying it to pre-normalized values
+    # (from normalize_kelurahan_desa) is correct and matches the original script behavior.
+    
     if prefix == 'detail':
         # Detail has combined kelurahan_desa_combined from exact matching
+        # (created by combining kelurahan_normalized + desa_normalized)
         kel_col = 'kelurahan_desa_combined'
     else:
         # POS has desa_kelurahan_normalized
         kel_col = 'desa_kelurahan_normalized'
     
+    # Both detail and POS use 'kabupaten_kota' for fuzzy matching
+    # (This matches scoring_cascading_polars.py which uses same column for both)
+    kab_col = 'kabupaten_kota'
+    
     # Add fuzzy-normalized columns
     df = df.with_columns([
         pl.col('provinsi').map_elements(
-            lambda x: normalize_for_matching(str(x), 'province'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'province'),
             return_dtype=pl.Utf8
         ).alias('norm_prov'),
-        pl.col('kabupaten_kota' if prefix == 'detail' else 'kabupaten_kota_source').map_elements(
-            lambda x: normalize_for_matching(str(x), 'kabupaten'),
+        pl.col(kab_col).map_elements(
+            lambda x: normalize_for_matching(str(x) if x else '', 'kabupaten'),
             return_dtype=pl.Utf8
         ).alias('norm_kab'),
         pl.col('kecamatan').map_elements(
-            lambda x: normalize_for_matching(str(x), 'kecamatan'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'kecamatan'),
             return_dtype=pl.Utf8
         ).alias('norm_kec'),
         pl.col(kel_col).map_elements(
-            lambda x: normalize_for_matching(str(x), 'kelurahan'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'kelurahan'),
             return_dtype=pl.Utf8
         ).alias('norm_kel'),
     ])
@@ -224,6 +241,44 @@ def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str) -> pl.DataFrame:
     df = df.select(prefixed_columns + [pl.col(f'{prefix}_idx')])
     
     return df
+    
+    
+def _deduplicate_matches(matches_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Perform 1-to-1 deduplication using iterative greedy approach.
+    
+    Args:
+        matches_df: DataFrame with potential matches and 'overall_conf' column
+        
+    Returns:
+        Deduplicated DataFrame
+    """
+    print("\nPerforming 1-to-1 deduplication...")
+    
+    # Sort by confidence descending
+    sorted_matches = matches_df.sort('overall_conf', descending=True)
+    
+    # Convert to dictionaries for iterative processing
+    # This is necessary because Polars unique() is "local greedy" (drops second-best matches immediately),
+    # whereas we need "global greedy" (if best match is taken, fall back to second best).
+    potential_matches = sorted_matches.to_dicts()
+    
+    used_detail = set()
+    used_pos = set()
+    final_indices = []
+    
+    for i, match in enumerate(potential_matches):
+        d_idx = match['detail_idx']
+        p_idx = match['pos_idx']
+        
+        if d_idx not in used_detail and p_idx not in used_pos:
+            used_detail.add(d_idx)
+            used_pos.add(p_idx)
+            final_indices.append(i)
+            
+    # Filter dataframe to keep only selected matches
+    # We use the original sorted 'filtered' dataframe and select by row index
+    return sorted_matches[final_indices]
 
 
 def cascading_fuzzy_match(
@@ -288,7 +343,7 @@ def cascading_fuzzy_match(
     
     # Calculate overall confidence and apply final gate
     filtered = filtered.with_columns(
-        (0.4 * pl.col('kec_sim') + 0.6 * pl.col('kel_sim')).alias('overall_conf')
+        (KECAMATAN_WEIGHT * pl.col('kec_sim') + KELURAHAN_WEIGHT * pl.col('kel_sim')).alias('overall_conf')
     )
     filtered = filtered.filter(pl.col('overall_conf') >= OVERALL_THRESHOLD)
     print(f"  After Overall gate: {len(filtered):,} pairs")
@@ -297,15 +352,8 @@ def cascading_fuzzy_match(
         print("No fuzzy matches passed all gates")
         return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df
     
-    # Perform 1-to-1 deduplication
-    print("\nPerforming 1-to-1 deduplication...")
-    filtered = filtered.sort('overall_conf', descending=True)
-    
-    # Deduplicate on detail side (keep best match per detail record)
-    filtered = filtered.unique(subset=['detail_idx'], keep='first')
-    
-    # Deduplicate on POS side (keep best match per POS record)  
-    filtered = filtered.unique(subset=['pos_idx'], keep='first')
+    # Perform 1-to-1 deduplication using iterative greedy approach
+    filtered = _deduplicate_matches(filtered)
     
     print(f"After deduplication: {len(filtered)} unique 1-to-1 matches")
     
@@ -355,6 +403,133 @@ def cascading_fuzzy_match(
 
 
 # ============================================================================
+# OUTPUT GENERATION HELPER FUNCTIONS
+# ============================================================================
+
+def _align_and_concat(
+    dfs: List[pl.DataFrame],
+    how: ConcatMethod = 'vertical'
+) -> pl.DataFrame:
+    """
+    Align schemas and concatenate multiple DataFrames.
+    
+    Args:
+        dfs: List of DataFrames to concatenate
+        how: Concatenation method ('vertical' or 'horizontal')
+        
+    Returns:
+        Concatenated DataFrame with aligned schemas
+    """
+    if not dfs:
+        return pl.DataFrame()
+    
+    if len(dfs) == 1:
+        return dfs[0]
+    
+    # Find common columns across all DataFrames
+    common_columns = set(dfs[0].columns)
+    for df in dfs[1:]:
+        common_columns &= set(df.columns)
+    
+    common_columns = list(common_columns)
+    
+    # Select common columns from each DataFrame and concatenate
+    return pl.concat(
+        [df.select(common_columns) for df in dfs],
+        how=how
+    )
+
+
+def _prepare_diagnostic_columns(
+    df: pl.DataFrame,
+    match_type: str,
+    kelurahan_col: str = 'kelurahan',
+    desa_col: str = 'desa'
+) -> pl.DataFrame:
+    """
+    Prepare diagnostic columns for exact, fuzzy, or unmatched records.
+    
+    Args:
+        df: Input DataFrame
+        match_type: 'exact', 'fuzzy', or 'unmatched'
+        kelurahan_col: Name of kelurahan column
+        desa_col: Name of desa column
+        
+    Returns:
+        DataFrame with standardized diagnostic columns
+    """
+    # Base columns that are always present
+    base_select = [
+        pl.col('kode_kelurahan').alias('detail_kode_kelurahan'),
+        pl.col('provinsi').alias('detail_provinsi'),
+        pl.col('kabupaten_kota').alias('detail_kabupaten_kota'),
+        pl.col('kecamatan').alias('detail_kecamatan'),
+    ]
+    
+    # Handle kelurahan_desa combination based on match type
+    if match_type == 'unmatched':
+        # Unmatched uses kelurahan_desa_combined directly
+        base_select.append(
+            pl.col('kelurahan_desa_combined').alias('detail_kelurahan_desa')
+        )
+    else:
+        # Exact and fuzzy combine kelurahan + desa
+        base_select.append(
+            (pl.col(kelurahan_col).fill_null('') + pl.col(desa_col).fill_null('')).alias('detail_kelurahan_desa')
+        )
+    
+    # Add similarity scores based on match type
+    if match_type == 'exact':
+        similarity_cols = [
+            pl.lit(1.0).alias('overall_confidence'),
+            pl.lit(1.0).alias('provinsi_similarity'),
+            pl.lit(1.0).alias('kabupaten_similarity'),
+            pl.lit(1.0).alias('kecamatan_similarity'),
+            pl.lit(1.0).alias('kelurahan_similarity'),
+        ]
+    elif match_type == 'fuzzy':
+        similarity_cols = [
+            pl.col('overall_confidence'),
+            pl.col('provinsi_similarity'),
+            pl.col('kabupaten_similarity'),
+            pl.col('kecamatan_similarity'),
+            pl.col('kelurahan_similarity'),
+        ]
+    else:  # unmatched
+        similarity_cols = [
+            pl.lit(0.0).alias('overall_confidence'),
+            pl.lit(0.0).alias('provinsi_similarity'),
+            pl.lit(0.0).alias('kabupaten_similarity'),
+            pl.lit(0.0).alias('kecamatan_similarity'),
+            pl.lit(0.0).alias('kelurahan_similarity'),
+        ]
+    
+    base_select.extend(similarity_cols)
+    
+    # Add POS columns based on match type
+    if match_type == 'unmatched':
+        pos_cols = [
+            pl.lit('').alias('pos_provinsi'),
+            pl.lit('').alias('pos_kabupaten_kota'),
+            pl.lit('').alias('pos_kecamatan'),
+            pl.lit('').alias('pos_kelurahan_desa'),
+            pl.lit('').alias('pos_kodepos'),
+        ]
+    else:
+        pos_cols = [
+            pl.col('provinsi').alias('pos_provinsi'),
+            pl.col('kabupaten_kota').alias('pos_kabupaten_kota'),
+            pl.col('kecamatan').alias('pos_kecamatan'),
+            (pl.col(kelurahan_col).fill_null('') + pl.col(desa_col).fill_null('')).alias('pos_kelurahan_desa'),
+            pl.col('kodepos').alias('pos_kodepos'),
+        ]
+    
+    base_select.extend(pos_cols)
+    
+    return df.select(base_select)
+
+
+# ============================================================================
 # OUTPUT GENERATION FUNCTIONS
 # ============================================================================
 
@@ -375,53 +550,37 @@ def save_parquet_with_pos(
         unmatched_detail: Dataframe of unmatched detail records
         output_path: Path to save parquet file
     """
-    # Combine exact and fuzzy matches
-    if len(exact_matches) > 0 and len(fuzzy_matches) > 0:
-        # Align schemas
-        common_columns = list(set(exact_matches.columns) & set(fuzzy_matches.columns))
-        combined = pl.concat([
-            exact_matches.select(common_columns),
-            fuzzy_matches.select(common_columns)
-        ], how='vertical')
-    elif len(exact_matches) > 0:
-        combined = exact_matches
-    elif len(fuzzy_matches) > 0:
-        combined = fuzzy_matches
-    else:
-        combined = pl.DataFrame()
+    # Combine exact and fuzzy matches using helper function
+    dfs_to_combine = []
+    if len(exact_matches) > 0:
+        dfs_to_combine.append(exact_matches)
+    if len(fuzzy_matches) > 0:
+        dfs_to_combine.append(fuzzy_matches)
+    
+    combined = _align_and_concat(dfs_to_combine) if dfs_to_combine else pl.DataFrame()
     
     # Add unmatched records (no kodepos, no confidence)
-    if len(combined) > 0 and len(unmatched_detail) > 0:
+    if len(unmatched_detail) > 0:
         # Prepare unmatched to match schema
         unmatched_to_add = unmatched_detail.drop([
             'kecamatan_normalized', 'kelurahan_normalized',
             'desa_normalized', 'kelurahan_desa_combined'
         ])
-        # Add null columns for kodepos and overall_confidence if they don't exist
-        if 'kodepos' not in unmatched_to_add.columns:
-            unmatched_to_add = unmatched_to_add.with_columns(pl.lit(None).cast(pl.Utf8).alias('kodepos'))
-        if 'overall_confidence' not in unmatched_to_add.columns:
-            unmatched_to_add = unmatched_to_add.with_columns(pl.lit(None).cast(pl.Float64).alias('overall_confidence'))
-        
-        # Align schemas and concatenate
-        common_columns_with_unmatched = list(set(combined.columns) & set(unmatched_to_add.columns))
-        final_df = pl.concat([
-            combined.select(common_columns_with_unmatched),
-            unmatched_to_add.select(common_columns_with_unmatched)
-        ], how='vertical')
-    elif len(combined) > 0:
-        final_df = combined
-    elif len(unmatched_detail) > 0:
-        unmatched_to_add = unmatched_detail.drop([
-            'kecamatan_normalized', 'kelurahan_normalized',
-            'desa_normalized', 'kelurahan_desa_combined'
-        ])
+        # Add null columns for kodepos and overall_confidence
         unmatched_to_add = unmatched_to_add.with_columns([
             pl.lit(None).cast(pl.Utf8).alias('kodepos'),
             pl.lit(None).cast(pl.Float64).alias('overall_confidence')
         ])
-        final_df = unmatched_to_add
+        
+        # Combine with matched records
+        if len(combined) > 0:
+            final_df = _align_and_concat([combined, unmatched_to_add])
+        else:
+            final_df = unmatched_to_add
+    elif len(combined) > 0:
+        final_df = combined
     else:
+        # No matches at all, return original detail with null postal codes
         final_df = detail_df.with_columns([
             pl.lit(None).cast(pl.Utf8).alias('kodepos'),
             pl.lit(None).cast(pl.Float64).alias('overall_confidence')
@@ -433,89 +592,53 @@ def save_parquet_with_pos(
     print(f"Saved {len(final_df)} records to {output_path}")
 
 
-def save_diagnostic_parquet(
+def save_diagnostic_csv(
     exact_matches: pl.DataFrame,
     fuzzy_matches: pl.DataFrame,
     unmatched_detail: pl.DataFrame,
     output_path: Path
 ) -> None:
     """
-    Save diagnostic parquet with detailed similarity scores.
-    
+    Save diagnostic CSV with detailed similarity scores.
+
     Args:
         exact_matches: Dataframe of exact matches
         fuzzy_matches: Dataframe of fuzzy matches
         unmatched_detail: Dataframe of unmatched detail records
-        output_path: Path to save parquet file
+        output_path: Path to save CSV file
     """
-    # Build diagnostic records list
-    records = []
+    dfs_to_concat = []
     
-    # Add exact matches
-    for row in exact_matches.iter_rows(named=True):
-        records.append({
-            'detail_kode_kelurahan': row.get('kode_kelurahan', ''),
-            'detail_provinsi': row.get('provinsi', ''),
-            'detail_kabupaten_kota': row.get('kabupaten_kota', ''),
-            'detail_kecamatan': row.get('kecamatan', ''),
-            'detail_kelurahan_desa': f"{row.get('kelurahan', '')}{row.get('desa', '')}",
-            'overall_confidence': 1.0,
-            'provinsi_similarity': 1.0,
-            'kabupaten_similarity': 1.0,
-            'kecamatan_similarity': 1.0,
-            'kelurahan_similarity': 1.0,
-            'pos_provinsi': row.get('provinsi', ''),
-            'pos_kabupaten_kota': row.get('kabupaten_kota', ''),
-            'pos_kecamatan': row.get('kecamatan', ''),
-            'pos_kelurahan_desa': f"{row.get('kelurahan', '')}{row.get('desa', '')}",
-            'pos_kodepos': row.get('kodepos', '')
-        })
+    # Common columns for output
+    cols = [
+        'detail_kode_kelurahan', 'detail_provinsi', 'detail_kabupaten_kota',
+        'detail_kecamatan', 'detail_kelurahan_desa',
+        'overall_confidence',
+        'provinsi_similarity', 'kabupaten_similarity', 'kecamatan_similarity', 'kelurahan_similarity',
+        'pos_provinsi', 'pos_kabupaten_kota', 'pos_kecamatan', 'pos_kelurahan_desa', 'pos_kodepos'
+    ]
     
-    # Add fuzzy matches
-    for row in fuzzy_matches.iter_rows(named=True):
-        records.append({
-            'detail_kode_kelurahan': row.get('kode_kelurahan', ''),
-            'detail_provinsi': row.get('provinsi', ''),
-            'detail_kabupaten_kota': row.get('kabupaten_kota', ''),
-            'detail_kecamatan': row.get('kecamatan', ''),
-            'detail_kelurahan_desa': f"{row.get('kelurahan', '')}{row.get('desa', '')}",
-            'overall_confidence': row.get('overall_confidence', 0.0),
-            'provinsi_similarity': row.get('provinsi_similarity', 0.0),
-            'kabupaten_similarity': row.get('kabupaten_similarity', 0.0),
-            'kecamatan_similarity': row.get('kecamatan_similarity', 0.0),
-            'kelurahan_similarity': row.get('kelurahan_similarity', 0.0),
-            'pos_provinsi': row.get('provinsi', ''),
-            'pos_kabupaten_kota': row.get('kabupaten_kota', ''),
-            'pos_kecamatan': row.get('kecamatan', ''),
-            'pos_kelurahan_desa': f"{row.get('kelurahan', '')}{row.get('desa', '')}",
-            'pos_kodepos': row.get('kodepos', '')
-        })
+    # 1. Process Exact Matches
+    if len(exact_matches) > 0:
+        exact_df = _prepare_diagnostic_columns(exact_matches, 'exact').select(cols)
+        dfs_to_concat.append(exact_df)
+        
+    # 2. Process Fuzzy Matches
+    if len(fuzzy_matches) > 0:
+        fuzzy_df = _prepare_diagnostic_columns(fuzzy_matches, 'fuzzy').select(cols)
+        dfs_to_concat.append(fuzzy_df)
+        
+    # 3. Process Unmatched Records
+    if len(unmatched_detail) > 0:
+        unmatched_df = _prepare_diagnostic_columns(unmatched_detail, 'unmatched').select(cols)
+        dfs_to_concat.append(unmatched_df)
     
-    # Add unmatched records
-    for row in unmatched_detail.iter_rows(named=True):
-        records.append({
-            'detail_kode_kelurahan': row.get('kode_kelurahan', ''),
-            'detail_provinsi': row.get('provinsi', ''),
-            'detail_kabupaten_kota': row.get('kabupaten_kota', ''),
-            'detail_kecamatan': row.get('kecamatan', ''),
-            'detail_kelurahan_desa': row.get('kelurahan_desa_combined', ''),
-            'overall_confidence': 0.0,
-            'provinsi_similarity': 0.0,
-            'kabupaten_similarity': 0.0,
-            'kecamatan_similarity': 0.0,
-            'kelurahan_similarity': 0.0,
-            'pos_provinsi': '',
-            'pos_kabupaten_kota': '',
-            'pos_kecamatan': '',
-            'pos_kelurahan_desa': '',
-            'pos_kodepos': ''
-        })
-    
-    if records:
-        df = pl.DataFrame(records)
+    if dfs_to_concat:
+        concat_method: ConcatMethod = 'vertical'
+        final_df = pl.concat(dfs_to_concat, how=concat_method)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.write_parquet(output_path, compression='snappy')
-        print(f"Saved {len(df)} diagnostic records to {output_path}")
+        final_df.write_csv(output_path)
+        print(f"Saved {len(final_df)} diagnostic records to {output_path}")
 
 
 def save_unmapped_pos_parquet(
