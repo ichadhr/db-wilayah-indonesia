@@ -92,8 +92,8 @@ def execute_kabupaten_kota_detail_batch(config, logger=None) -> Optional[Any]:
 
     # Process in batches
     for batch_start in range(0, total_details, config.batch_size):
+        batch_df = detail_df.slice(batch_start, config.batch_size)
         batch_end = min(batch_start + config.batch_size, total_details)
-        batch_df = detail_df.slice(batch_start, batch_end)
 
         logger.info(f"Processing batch {batch_start // config.batch_size + 1}: details {batch_start + 1}-{batch_end} ({total_details})")
 
