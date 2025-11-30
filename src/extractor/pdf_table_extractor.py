@@ -666,7 +666,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
             districts_join = districts_with_ibukota
 
             # Apply corrections to normalized_ibukota using CorrectionLoader
-            from utils.correction import CorrectionLoader
+            from utils.correction_bsni import CorrectionLoader
             corrector = CorrectionLoader()
             
             def apply_kecamatan_correction(struct_val):
@@ -826,6 +826,7 @@ class PDFTableExtractor(PDFTableExtractorBase):
         }
 
         district_counter = 0
+        kelurahan_counter = 0
 
         # Helper for safe row access (avoid shadowing)
         def safe_row_val(row_data: List[Any], idx: int, default: Any = "") -> Any:
@@ -931,9 +932,10 @@ class PDFTableExtractor(PDFTableExtractorBase):
 
             elif len(kode_parts) == 3:  # District
                 district_counter += 1
+                kelurahan_counter = 0
                 kecamatan = safe_row_val(row, 4, "")
                 if kecamatan.startswith(str(district_counter)):
-                    kecamatan = kecamatan[len(str(district_counter)):].strip()
+                    kecamatan = str(district_counter) + " " + kecamatan[len(str(district_counter)):].strip()
                 current_district.update({
                     'kecamatan': kecamatan,
                     'kelurahan': safe_row_val(row, 5, ""),
@@ -963,8 +965,11 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 subdistrict_village_data.append(data)
 
             elif len(kode_parts) == 4:  # Sub-district or Village
+                kelurahan_counter += 1
                 subdistrict_name = safe_row_val(row, 5, "")
-                village_name = safe_row_val(row, 6, "") 
+                if subdistrict_name.startswith(str(kelurahan_counter)):
+                    subdistrict_name = str(kelurahan_counter) + " " + subdistrict_name[len(str(kelurahan_counter)):].strip()
+                village_name = safe_row_val(row, 6, "")
 
                 data = DetailsData(
                     kode_provinsi=kode_provinsi,
