@@ -63,11 +63,13 @@ Quickly match records where administrative names are identical after normalizati
 2. Normalize kecamatan using normalize_kecamatan():
    - Convert to lowercase
    - Remove "kecamatan" prefix
+   - Remove leading numbers
    - Remove extra whitespace
    - Standardize common abbreviations
 3. Normalize kelurahan using normalize_kelurahan_desa():
    - Convert to lowercase
    - Remove "kelurahan"/"desa" prefix
+   - Remove leading numbers
    - Remove extra whitespace
    - Standardize geographic prefixes
 4. Normalize desa similarly

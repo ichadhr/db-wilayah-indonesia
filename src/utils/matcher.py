@@ -53,17 +53,17 @@ def normalize_detail_data(df: pl.DataFrame, province: str) -> pl.DataFrame:
     # Add normalized columns
     df_filtered = df_filtered.with_columns([
         pl.col('kelurahan').map_elements(
-            lambda x: normalize_kelurahan_desa(x) if x else "", 
+            lambda x: normalize_kelurahan_desa(x) if x else "",
             return_dtype=pl.Utf8
-        ).alias('kelurahan_normalized'),
+        ).str.to_lowercase().alias('kelurahan_normalized'),
         pl.col('desa').map_elements(
-            lambda x: normalize_kelurahan_desa(x) if x else "", 
+            lambda x: normalize_kelurahan_desa(x) if x else "",
             return_dtype=pl.Utf8
-        ).alias('desa_normalized'),
+        ).str.to_lowercase().alias('desa_normalized'),
         pl.col('kecamatan').map_elements(
-            lambda x: normalize_kecamatan(x) if x else "", 
+            lambda x: normalize_kecamatan(x) if x else "",
             return_dtype=pl.Utf8
-        ).alias('kecamatan_normalized')
+        ).str.to_lowercase().alias('kecamatan_normalized')
     ])
     
     # Combine kelurahan and desa
@@ -103,13 +103,13 @@ def normalize_pos_data(df: pl.DataFrame, province: str) -> pl.DataFrame:
     # Add normalized columns
     df_prepared = df.with_columns([
         pl.col('kecamatan').map_elements(
-            lambda x: normalize_kecamatan(x) if x else "", 
+            lambda x: normalize_kecamatan(x) if x else "",
             return_dtype=pl.Utf8
-        ).alias('kecamatan_normalized'),
+        ).str.to_lowercase().alias('kecamatan_normalized'),
         pl.col('desa_kelurahan').map_elements(
-            lambda x: normalize_kelurahan_desa(x) if x else "", 
+            lambda x: normalize_kelurahan_desa(x) if x else "",
             return_dtype=pl.Utf8
-        ).alias('desa_kelurahan_normalized')
+        ).str.to_lowercase().alias('desa_kelurahan_normalized')
     ])
     
     # Add province column
@@ -327,7 +327,7 @@ def cascading_fuzzy_match(
     ])
     
     # Apply cascading gates
-    print(f"Applying gates (Prov≥{PROVINCE_THRESHOLD}, Kab≥{KABUPATEN_THRESHOLD}, Kec≥{KECAMATAN_THRESHOLD}, Kel≥{KELURAHAN_THRESHOLD}, Overall≥{OVERALL_THRESHOLD})...")
+    print(f"Applying gates (Prov>={PROVINCE_THRESHOLD}, Kab>={KABUPATEN_THRESHOLD}, Kec>={KECAMATAN_THRESHOLD}, Kel>={KELURAHAN_THRESHOLD}, Overall>={OVERALL_THRESHOLD})...")
     
     filtered = joined.filter(pl.col('prov_sim') >= PROVINCE_THRESHOLD)
     print(f"  After Province gate: {len(filtered):,} pairs")
