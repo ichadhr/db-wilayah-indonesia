@@ -1,13 +1,14 @@
 import re
 import warnings
-from typing import Any
+from typing import Any, List, Optional
 
 from models.pdf_structure import (
     Province,
     AdministrativeStructure,
     PageRange,
     Section,
-    ProvinceSections
+    ProvinceSections,
+    Detail
 )
 from pypdf import PdfReader
 from utils.errors import PDFStructureError, error_handler, log_error
@@ -114,14 +115,23 @@ class PDFStructureExtractor:
         if not text:
             return
 
+        self._handle_document_index_detection(page_num, text)
+        self._handle_province_section_detection(page_num, text)
+        self._handle_kecamatan_section_detection(page_num, text)
+        self._handle_end_section_detection(page_num, text)
+        self._handle_detail_processing(page_num, text)
+
+    def _handle_document_index_detection(self, page_num: int, text: str) -> None:
+        """Handle overall document index page detection."""
         # Check for overall document index page
         if re.search(re.escape(self.PROVINSI_PAGE), text, re.IGNORECASE):
             if (
                     self.document_index_page is None
             ):  # Only set once for the first occurrence
                 self.document_index_page = page_num
-            return
 
+    def _handle_province_section_detection(self, page_num: int, text: str) -> None:
+        """Handle province section detection and province creation."""
         # Check for provinsi_index_page (province sections)
         if self.PROVINSI_PATTERN.search(text):
             # Extract province name
@@ -168,8 +178,9 @@ class PDFStructureExtractor:
 
                     # Append to administrative_structure
                     self.administrative_structure.append(self.current_province)
-            return
 
+    def _handle_kecamatan_section_detection(self, page_num: int, text: str) -> None:
+        """Handle kecamatan section detection and page range updates."""
         # Check for kecamatan_index_page and extract details
         if self.KECAMATAN_PATTERN.search(text) and self.current_province:
             # Update kabupaten_kota_index end based on kecamatan_index_page location
@@ -192,13 +203,15 @@ class PDFStructureExtractor:
             self.current_province.sections.kecamatan_index.page_range.start = (
                 kecamatan_index_start
             )
-            return
 
+    def _handle_end_section_detection(self, page_num: int, text: str) -> None:
+        """Handle end section detection."""
         # Check for end section - set to last occurrence
         if self.END_SECTION_PATTERN.search(text):
             self.end_section_page = page_num
-            return
 
+    def _handle_detail_processing(self, page_num: int, text: str) -> None:
+        """Handle detail processing within kecamatan index range."""
         # Check for C.*.\d+) patterns and process details on pages within kecamatan_index range
         if self.current_province:
             kecamatan_index_start = (
@@ -368,43 +381,133 @@ class PDFStructureExtractor:
             issues.append("No provinces found in structure")
             return {"valid": False, "issues": issues}
 
-        # Check for overlapping page ranges
-        for i, province in enumerate(self.administrative_structure):
-            # Check province page range validity (skip if end is None)
-            province_end = province.page_range.end
+        # Validate provinces and their details
+        for province in self.administrative_structure:
+            self._validate_province_page_ranges(province, issues)
+            self._validate_province_sections(province, issues)
+            self._validate_province_details(province, issues)
+            self._validate_detail_counts(province, issues)
+
+        # Check for overlapping between provinces
+        self._validate_province_overlaps(issues)
+
+        return {
+            "valid": len(issues) == 0,
+            "issues": issues,
+        }
+
+    def _validate_province_page_ranges(self, province, issues: list) -> None:
+        """Validate province page ranges and bounds."""
+        province_end = province.page_range.end
+
+        # Check province page range validity (skip if end is None)
+        if (
+                province_end is not None
+                and province.page_range.start is not None
+                and province.page_range.start >= province_end
+        ):
+            issues.append(f"Province {province.name}: Invalid page range")
+
+        # Check page ranges are within document bounds
+        total_pages = len(self.reader.pages)
+        if province.page_range.start is not None and (
+                province.page_range.start < 0
+                or province.page_range.start >= total_pages
+        ):
+            issues.append(
+                f"Province {province.name}: Start page {province.page_range.start} outside document bounds (0-{total_pages - 1})"
+            )
+        if province_end is not None and (
+                province_end < 0 or province_end > total_pages
+        ):
+            issues.append(
+                f"Province {province.name}: End page {province_end} outside document bounds (0-{total_pages})"
+            )
+
+    def _validate_province_sections(self, province, issues: list) -> None:
+        """Validate that provinces have required sections."""
+        # Ensure provinces have required sections
+        if (
+                province.sections.kabupaten_kota_index.page_range.start is None
+                or province.sections.kecamatan_index.page_range.start is None
+        ):
+            issues.append(f"Province {province.name}: Missing required sections")
+
+    def _validate_province_details(self, province, issues: list) -> None:
+        """Validate details within a province."""
+        province_end = province.page_range.end
+
+        # Sort details by page range for proper overlap detection
+        sorted_details = sorted(
+            province.details, key=lambda x: x.page_range.start or 0
+        )
+
+        for j, detail in enumerate(sorted_details):
+            detail_end = detail.page_range.end
+
+            # Check detail page range validity (skip if end is None)
             if (
-                    province_end is not None
+                    detail_end is not None
+                    and detail.page_range.start is not None
+                    and detail.page_range.start > detail_end
+            ):
+                issues.append(
+                    f"Province {province.name}, Detail {detail.id}: Invalid page range"
+                )
+
+            # Check detail page ranges within province bounds
+            if (
+                    detail.page_range.start is not None
                     and province.page_range.start is not None
-                    and province.page_range.start >= province_end
             ):
-                issues.append(f"Province {province.name}: Invalid page range")
+                if detail.page_range.start < province.page_range.start:
+                    issues.append(
+                        f"Province {province.name}, Detail {detail.id}: Start page before province start"
+                    )
+            if detail_end is not None and province_end is not None:
+                if detail_end > province_end:
+                    issues.append(
+                        f"Province {province.name}, Detail {detail.id}: End page after province end"
+                    )
 
-            # Check page ranges are within document bounds
-            total_pages = len(self.reader.pages)
-            if province.page_range.start is not None and (
-                    province.page_range.start < 0
-                    or province.page_range.start >= total_pages
-            ):
-                issues.append(
-                    f"Province {province.name}: Start page {province.page_range.start} outside document bounds (0-{total_pages - 1})"
-                )
-            if province_end is not None and (
-                    province_end < 0 or province_end > total_pages
-            ):
-                issues.append(
-                    f"Province {province.name}: End page {province_end} outside document bounds (0-{total_pages})"
-                )
+            # Check for overlapping details (skip if either end is None)
+            if j < len(sorted_details) - 1:
+                next_detail = sorted_details[j + 1]
+                next_start = next_detail.page_range.start
+                if (
+                        detail_end is not None
+                        and next_start is not None
+                        and detail_end > next_start
+                ):
+                    issues.append(
+                        f"Province {province.name}: Overlapping details {detail.id} and {next_detail.id}"
+                    )
 
-            # Ensure provinces have required sections
-            if (
-                    province.sections.kabupaten_kota_index.page_range.start is None
-                    or province.sections.kecamatan_index.page_range.start is None
-            ):
-                issues.append(f"Province {province.name}: Missing required sections")
+    def _validate_detail_counts(self, province, issues: list) -> None:
+        """Validate that detail counts match province totals."""
+        # Validate detail counts match totals
+        actual_kabupaten = sum(
+            1 for detail in province.details if detail.region_type == "kabupaten"
+        )
+        actual_kota = sum(
+            1 for detail in province.details if detail.region_type == "kota"
+        )
+        if actual_kabupaten != province.total_kabupaten:
+            issues.append(
+                f"Province {province.name}: Kabupaten count mismatch (expected: {province.total_kabupaten}, actual: {actual_kabupaten})"
+            )
+        if actual_kota != province.total_kota:
+            issues.append(
+                f"Province {province.name}: Kota count mismatch (expected: {province.total_kota}, actual: {actual_kota})"
+            )
 
-            # Check for overlapping with next province (skip if either end is None)
+    def _validate_province_overlaps(self, issues: list) -> None:
+        """Validate for overlapping page ranges between provinces."""
+        # Check for overlapping with next province (skip if either end is None)
+        for i, province in enumerate(self.administrative_structure):
             if i < len(self.administrative_structure) - 1:
                 next_province = self.administrative_structure[i + 1]
+                province_end = province.page_range.end
                 next_start = next_province.page_range.start
                 if (
                         province_end is not None
@@ -414,75 +517,6 @@ class PDFStructureExtractor:
                     issues.append(
                         f"Overlapping page ranges between {province.name} and {next_province.name}"
                     )
-
-            # Check details within province
-            # Sort details by page range for proper overlap detection
-            sorted_details = sorted(
-                province.details, key=lambda x: x.page_range.start or 0
-            )
-
-            for j, detail in enumerate(sorted_details):
-                # Check detail page range validity (skip if end is None)
-                detail_end = detail.page_range.end
-                if (
-                        detail_end is not None
-                        and detail.page_range.start is not None
-                        and detail.page_range.start > detail_end
-                ):
-                    issues.append(
-                        f"Province {province.name}, Detail {detail.id}: Invalid page range"
-                    )
-
-                # Check detail page ranges within province bounds
-                if (
-                        detail.page_range.start is not None
-                        and province.page_range.start is not None
-                ):
-                    if detail.page_range.start < province.page_range.start:
-                        issues.append(
-                            f"Province {province.name}, Detail {detail.id}: Start page before province start"
-                        )
-                if detail_end is not None and province_end is not None:
-                    if detail_end > province_end:
-                        issues.append(
-                            f"Province {province.name}, Detail {detail.id}: End page after province end"
-                        )
-
-                # Check for overlapping details (skip if either end is None)
-                if j < len(sorted_details) - 1:
-                    next_detail = sorted_details[j + 1]
-                    next_start = next_detail.page_range.start
-                    if (
-                            detail_end is not None
-                            and next_start is not None
-                            and detail_end > next_start
-                    ):
-                        issues.append(
-                            f"Province {province.name}: Overlapping details {detail.id} and {next_detail.id}"
-                        )
-
-            # Validate detail counts match totals
-            actual_kabupaten = sum(
-                1 for detail in province.details if detail.region_type == "kabupaten"
-            )
-            actual_kota = sum(
-                1 for detail in province.details if detail.region_type == "kota"
-            )
-            if actual_kabupaten != province.total_kabupaten:
-                issues.append(
-                    f"Province {province.name}: Kabupaten count mismatch (expected: {province.total_kabupaten}, actual: {actual_kabupaten})"
-                )
-            if actual_kota != province.total_kota:
-                issues.append(
-                    f"Province {province.name}: Kota count mismatch (expected: {province.total_kota}, actual: {actual_kota})"
-                )
-
-        return {
-            "valid": len(issues) == 0,
-            "issues": issues,
-            "province_count": len(self.administrative_structure),
-            "total_details": sum(len(p.details) for p in self.administrative_structure),
-        }
 
     @staticmethod
     def print_validation_result(validation: dict[str, Any]) -> None:
