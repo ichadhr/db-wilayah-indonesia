@@ -9,6 +9,8 @@ scoring_cascading_polars.py (fuzzy matching) into reusable utility functions.
 """
 
 from abc import ABC, abstractmethod
+from typing import List, Tuple
+from pathlib import Path
 import polars as pl
 import polars_ds as pds
 from pathlib import Path
