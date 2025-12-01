@@ -57,7 +57,10 @@ def _get_province_section_struct(
 
     for province in structure.provinces:
         if province_names is None or province.name in province_names:
-            section = getattr(province.sections, section_attr)
+            try:
+                section = getattr(province.sections, section_attr)
+            except AttributeError:
+                raise ValueError(f"Unknown section attribute: {section_attr}")
             sections_data.append(
                 {
                     "province_name": province.name,

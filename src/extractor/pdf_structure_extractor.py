@@ -2,11 +2,21 @@ import re
 import warnings
 from typing import Any
 
-from models.pdf_structure import *
+from models.pdf_structure import (
+    Province,
+    AdministrativeStructure,
+    PageRange,
+    Section,
+    ProvinceSections
+)
 from pypdf import PdfReader
 from utils.errors import PDFStructureError, error_handler, log_error
 from utils.paths import get_json_output_path
 from utils.progress import progress_manager
+
+# Constants for PDF page range calculations
+# Offset adjustment for 1-based vs 0-based page indexing
+PAGE_OFFSET_ADJUSTMENT = 1
 
 
 class PDFStructureExtractor:
@@ -169,7 +179,7 @@ class PDFStructureExtractor:
                 self.current_province.sections.kabupaten_kota_index.page_range.start
             )
             if kabupaten_kota_index_start == page_num + 1:
-                kabupaten_kota_index_end = page_num + 1
+                kabupaten_kota_index_end = page_num + PAGE_OFFSET_ADJUSTMENT
             else:
                 kabupaten_kota_index_end = page_num
 
@@ -210,7 +220,7 @@ class PDFStructureExtractor:
                     for code, name in kecamatan_index_patterns:
                         if province_letter and code.startswith(f'C.{province_letter}'):
                             if kecamatan_index_start == page_num + 1:
-                                kecamatan_index_end = page_num + 1
+                                kecamatan_index_end = page_num + PAGE_OFFSET_ADJUSTMENT
                             else:
                                 kecamatan_index_end = page_num
                             self.current_province.sections.kecamatan_index.page_range.end = (

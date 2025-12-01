@@ -188,7 +188,14 @@ def log_error(
         operation: Name of the operation where error occurred
         level: Logging level ('debug', 'info', 'warning', 'error', 'critical')
     """
-    log_func = getattr(logger, level, logger.error)
+    LOG_METHODS = {
+        'debug': logger.debug,
+        'info': logger.info,
+        'warning': logger.warning,
+        'error': logger.error,
+        'critical': logger.critical
+    }
+    log_func = LOG_METHODS.get(level, logger.error)
 
     if isinstance(error, PDFExtractorError):
         log_func(
