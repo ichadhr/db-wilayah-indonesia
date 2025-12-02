@@ -72,7 +72,7 @@ def load_parquet_files(province: str, parquet_dir: Path) -> Tuple[pl.DataFrame, 
     
     detail_df = pl.read_parquet(detail_file)
     pos_df = pl.read_parquet(pos_file)
-    
+
     print(f"Loaded {len(detail_df):,} detail records")
     print(f"Loaded {len(pos_df):,} POS records")
     
@@ -132,7 +132,7 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
             exact_matches,
             fuzzy_matches,
             final_unmatched_detail,
-            province_log_dir / f"{province}_kabupaten_kota_with_pos_new.parquet"
+            province_log_dir / f"{province}_kabupaten_kota_with_pos.parquet"
         )
         
         # Output 2: Diagnostic CSV with similarity scores
@@ -140,13 +140,13 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
             exact_matches,
             fuzzy_matches,
             final_unmatched_detail,
-            province_log_dir / f"{province}_cascading_matches_new.csv"
+            province_log_dir / f"{province}_log_matches.csv"
         )
         
         # Output 3: Unmapped POS records
         save_unmapped_pos_parquet(
             final_unmapped_pos,
-            province_log_dir / f"{province}_cascading_matches_remain_new.parquet"
+            province_log_dir / f"{province}_remain_unmatch_pos.parquet"
         )
         
         # Print summary statistics
