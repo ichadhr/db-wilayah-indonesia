@@ -72,6 +72,19 @@ def format_text(text: str) -> str:
 
     return text.strip()
 
+def clean_leading_number(text: str) -> str:
+    """
+    Remove leading numbers from text (e.g., "1. Name" → "Name").
+
+    Args:
+        text: Input text that may contain leading numbers
+
+    Returns:
+        Text with leading numbers removed
+    """
+    if not text:
+        return ""
+    return re.sub(r'^\d+\.?\s+', '', text)
 
 def normalize_for_matching(text: str, field_type: str = 'kelurahan') -> str:
     """
@@ -273,6 +286,7 @@ def normalize_kabupaten_kota(text: str) -> str:
         r'\bKab\.\s*': 'Kabupaten ',
         r'\bKab\b': 'Kabupaten',
         r'\bKota\b': 'Kota',
+        r'\bKep\.\s*': 'Kepulauan ',
     }
 
     for pattern, replacement in replacements.items():
@@ -333,7 +347,7 @@ def normalize_kecamatan(text: str) -> str:
     text = text.strip()
 
     # Remove leading numbers (e.g., "1. Name" → "Name")
-    text = re.sub(r'^\d+\.?\s+', '', text)
+    text = clean_leading_number(text)
 
     # Expand abbreviations
     replacements = {
@@ -369,7 +383,7 @@ def normalize_kelurahan_desa(text: str) -> str:
     text = text.strip()
 
     # Remove leading numbers (e.g., "1. Name" → "Name")
-    text = re.sub(r'^\d+\.?\s+', '', text)
+    text = clean_leading_number(text)
 
     # Expand abbreviations
     replacements = {

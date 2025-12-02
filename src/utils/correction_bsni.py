@@ -6,6 +6,7 @@ from typing import Dict, Optional
 import polars as pl
 
 from utils.errors import FileOperationError, ValidationError, error_handler, log_error
+from utils.text_utils import format_text
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +65,17 @@ class CorrectionLoader:
                     if not fix_source or not source_value:
                         continue
 
+                    # Normalize the source_value key for case-insensitive lookup
+                    normalized_source_value = format_text(source_value).lower()
+
                     if fix_source not in self._corrections:
                         self._corrections[fix_source] = {}
                         self._metadata[fix_source] = {}
 
-                    self._corrections[fix_source][source_value] = corrected_value
+                    self._corrections[fix_source][normalized_source_value] = corrected_value
+                    # Store metadata with both original and normalized keys for scope checking
+                    self._metadata[fix_source][normalized_source_value] = row
+                    # Also keep original for backward compatibility if needed
                     self._metadata[fix_source][source_value] = row
                     count += 1
 
@@ -89,30 +96,42 @@ class CorrectionLoader:
     def get_correction(self, value: str, fix_source: str) -> Optional[str]:
         """
         Get corrected value for a given source value and fix source.
-        
+
+        This method performs case-insensitive lookup by normalizing the input value.
+
         Args:
             value: The value to correct
             fix_source: The source of the fix (e.g., 'bsni', 'kecamatan_index')
-            
+
         Returns:
             Corrected value if found, None otherwise
         """
         if fix_source in self._corrections:
-            return self._corrections[fix_source].get(value)
+            # Normalize the lookup value for case-insensitive matching
+            normalized_value = format_text(value).lower()
+            return self._corrections[fix_source].get(normalized_value)
         return None
 
     def get_metadata(self, value: str, fix_source: str) -> Optional[dict]:
         """
         Get full metadata for a correction.
-        
+
+        This method performs case-insensitive lookup by normalizing the input value.
+
         Args:
             value: The source value
             fix_source: The source of the fix
-            
+
         Returns:
             Dictionary containing the full CSV row for the correction
         """
         if fix_source in self._metadata:
+            # First try normalized lookup
+            normalized_value = format_text(value).lower()
+            metadata = self._metadata[fix_source].get(normalized_value)
+            if metadata:
+                return metadata
+            # Fallback to original value for backward compatibility
             return self._metadata[fix_source].get(value)
         return None
 

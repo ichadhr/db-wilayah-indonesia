@@ -7,7 +7,7 @@ import polars as pl
 from models.pdf_table import ProvinceIndexData, RegencyIndexData, DistrictIndexData, DetailsData
 from utils.errors import TableExtractionError, FileOperationError, error_handler, log_error
 from utils.progress import progress_manager
-from utils.text_utils import normalize_ibukota_kabupaten_kota, normalize_kabupaten_kota
+from utils.text_utils import clean_leading_number, normalize_ibukota_kabupaten_kota, normalize_kabupaten_kota
 
 
 @error_handler(operation_name="get_p_bsni_mapping", log_errors=True)
@@ -655,12 +655,13 @@ class PDFTableExtractor(PDFTableExtractorBase):
             df_kode_wilayah_join = df_kode_wilayah.with_columns(
                 join_key=pl.struct(["kabupaten_kota", "nama_kota"]).map_elements(
                     lambda x: (
-                        normalize_kabupaten_kota(x["kabupaten_kota"] or "").replace(" ", "").lower() + 
-                        re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["nama_kota"] or ""), flags=re.IGNORECASE).replace(" ", "").lower()
+                        clean_leading_number(normalize_kabupaten_kota(x["kabupaten_kota"] or "")).replace(" ", "").lower() +
+                        clean_leading_number(re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["nama_kota"] or ""), flags=re.IGNORECASE)).replace(" ", "").lower()
                     ),
                     return_dtype=pl.Utf8
                 )
             )
+
 
             # Prepare districts for join
             districts_join = districts_with_ibukota
@@ -672,9 +673,10 @@ class PDFTableExtractor(PDFTableExtractorBase):
             def apply_kecamatan_correction(struct_val):
                 val = struct_val["ibukota"]
                 kab_kota = struct_val["kabupaten"]
-                
-                if not val: return val
-                
+
+                if not val:
+                    return val
+
                 corrected = corrector.get_correction(val, 'kecamatan_index')
                 if corrected:
                     # Check metadata for scope constraints
@@ -684,12 +686,13 @@ class PDFTableExtractor(PDFTableExtractorBase):
                         # If target_kab is defined, it MUST match the current kabupaten_kota
                         # We normalize both for comparison to be safe
                         if target_kab:
-                            norm_target = normalize_kabupaten_kota(target_kab).replace(" ", "").lower()
-                            norm_current = normalize_kabupaten_kota(kab_kota or "").replace(" ", "").lower()
+                            norm_target = normalize_kabupaten_kota(clean_leading_number(target_kab)).replace(" ", "").lower()
+                            norm_current = normalize_kabupaten_kota(clean_leading_number(kab_kota or "")).replace(" ", "").lower()
                             if norm_target != norm_current:
                                 return val # Skip correction if context doesn't match
-                
-                return corrected if corrected else val
+                    return corrected
+                else:
+                    return val
 
             districts_join = districts_join.with_columns(
                 ibukota_kabupaten_kota=pl.struct([
@@ -700,12 +703,13 @@ class PDFTableExtractor(PDFTableExtractorBase):
                 # Calculate join_key after correction
                 join_key=pl.struct(["kabupaten_kota", "ibukota_kabupaten_kota"]).map_elements(
                     lambda x: (
-                        normalize_kabupaten_kota(x["kabupaten_kota"] or "").replace(" ", "").lower() + 
-                        re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["ibukota_kabupaten_kota"] or ""), flags=re.IGNORECASE).replace(" ", "").lower()
+                        clean_leading_number(normalize_kabupaten_kota(x["kabupaten_kota"] or "")).replace(" ", "").lower() +
+                        clean_leading_number(re.sub(r'^Kota\s+', '', normalize_ibukota_kabupaten_kota(x["ibukota_kabupaten_kota"] or ""), flags=re.IGNORECASE)).replace(" ", "").lower()
                     ),
                     return_dtype=pl.Utf8
                 )
             )
+
 
             # Perform join
             joined = districts_join.join(
