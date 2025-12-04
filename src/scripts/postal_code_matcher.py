@@ -17,6 +17,8 @@ Output files (with _new suffix):
 
 import sys
 import argparse
+import contextlib
+import io
 from pathlib import Path
 from typing import Tuple
 
@@ -34,7 +36,8 @@ from utils.matcher import (
     cascading_fuzzy_match,
     save_parquet_with_pos,
     save_diagnostic_csv,
-    save_unmapped_pos_parquet
+    save_unmapped_detail_csv,
+    save_unmapped_pos_csv
 )
 
 
@@ -44,6 +47,19 @@ class Config:
     LOG_DIR = "src/log"
     DETAIL_SUFFIX = "_kabupaten_kota_detail.parquet"
     POS_SUFFIX = "_kabupaten_kota_pos.parquet"
+
+
+class Tee(io.StringIO):
+    """Custom StringIO that writes to both stdout and a file."""
+    def __init__(self, original_stdout, file):
+        super().__init__()
+        self.original_stdout = original_stdout
+        self.file = file
+
+    def write(self, data):
+        self.original_stdout.write(data)
+        self.file.write(data)
+        return len(data)
 
 
 def load_parquet_files(province: str, parquet_dir: Path) -> Tuple[pl.DataFrame, pl.DataFrame]:
@@ -113,7 +129,8 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         if len(unmatched_detail) > 0 and len(unmapped_pos) > 0:
             fuzzy_matches, final_unmatched_detail, final_unmapped_pos = cascading_fuzzy_match(
                 unmatched_detail,
-                unmapped_pos
+                unmapped_pos,
+                province
             )
         else:
             print("Skipping fuzzy matching (no unmatched records)")
@@ -139,14 +156,19 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         save_diagnostic_csv(
             exact_matches,
             fuzzy_matches,
-            final_unmatched_detail,
             province_log_dir / f"{province}_log_matches.csv"
+        )
+
+        # Output 3: Unmapped detail records
+        save_unmapped_detail_csv(
+            final_unmatched_detail,
+            province_log_dir / f"{province}_remain_unmapped_detail.csv"
         )
         
         # Output 3: Unmapped POS records
-        save_unmapped_pos_parquet(
+        save_unmapped_pos_csv(
             final_unmapped_pos,
-            province_log_dir / f"{province}_remain_unmatch_pos.parquet"
+            province_log_dir / f"{province}_remain_unmapped_pos.csv"
         )
         
         # Print summary statistics
@@ -154,16 +176,22 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         total_detail = len(detail_normalized)
         total_matched = len(exact_matches) + len(fuzzy_matches)
         match_rate = (total_matched / total_detail * 100) if total_detail > 0 else 0
-        
-        print(f"\n{'='*80}")
-        print(f"SUMMARY: {province}")
-        print(f"{'='*80}")
-        print(f"Total detail records: {total_detail:,}")
-        print(f"Exact matches: {len(exact_matches):,} ({len(exact_matches)/total_detail*100:.1f}%)")
-        print(f"Fuzzy matches: {len(fuzzy_matches):,} ({len(fuzzy_matches)/total_detail*100:.1f}%)")
-        print(f"Total matched: {total_matched:,} ({match_rate:.1f}%)")
-        print(f"Unmatched: {len(final_unmatched_detail):,} ({len(final_unmatched_detail)/total_detail*100:.1f}%)")
-        print(f"{'='*80}\n")
+
+        # Build summary string
+        summary = (
+            f"\n{'='*80}\n"
+            f"SUMMARY: {province}\n"
+            f"{'='*80}\n"
+            f"Total detail records: {total_detail:,}\n"
+            f"Exact matches: {len(exact_matches):,} ({len(exact_matches)/total_detail*100:.1f}%)\n"
+            f"Fuzzy matches: {len(fuzzy_matches):,} ({len(fuzzy_matches)/total_detail*100:.1f}%)\n"
+            f"Total matched: {total_matched:,} ({match_rate:.1f}%)\n"
+            f"Unmatched: {len(final_unmatched_detail):,} ({len(final_unmatched_detail)/total_detail*100:.1f}%)\n"
+            f"{'='*80}\n"
+        )
+
+        # Print to terminal
+        print(summary)
         
     except Exception as e:
         import traceback
@@ -202,7 +230,11 @@ def main():
     
     if args.province:
         # Process single province
-        match_province(args.province, parquet_dir, log_dir)
+        log_file_path = log_dir / args.province / f"{args.province}_summary.log"
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file_path, 'w') as log_file:
+            with contextlib.redirect_stdout(Tee(sys.stdout, log_file)):
+                match_province(args.province, parquet_dir, log_dir)
     else:
         # Process all provinces
         province_dirs = [d for d in parquet_dir.iterdir() if d.is_dir()]
@@ -218,12 +250,16 @@ def main():
         failed = []
         
         for province in provinces:
-            try:
-                match_province(province, parquet_dir, log_dir)
-                successful += 1
-            except Exception as e:
-                print(f"FAILED: {province} - {e}\n")
-                failed.append(province)
+            log_file_path = log_dir / province / f"{province}_summary.log"
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_file_path, 'w') as log_file:
+                with contextlib.redirect_stdout(Tee(sys.stdout, log_file)):
+                    try:
+                        match_province(province, parquet_dir, log_dir)
+                        successful += 1
+                    except Exception as e:
+                        print(f"FAILED: {province} - {e}\n")
+                        failed.append(province)
         
         # Final summary
         print(f"\n{'='*80}")

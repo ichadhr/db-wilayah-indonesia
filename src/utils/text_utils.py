@@ -1,5 +1,6 @@
+import functools
 import re
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Literal, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from models.kode_wilayah import KodeWilayah
@@ -86,62 +87,70 @@ def clean_leading_number(text: str) -> str:
         return ""
     return re.sub(r'^\d+\.?\s+', '', text)
 
-def normalize_for_matching(text: str, field_type: str = 'kelurahan') -> str:
+
+@functools.lru_cache(maxsize=None)
+def _get_abbreviation_pattern(province: str) -> Optional[re.Pattern]:
+    """
+    Get cached compiled regex pattern for province-specific abbreviations.
+
+    Args:
+        province: Province name (case-insensitive)
+
+    Returns:
+        Compiled regex pattern or None if no abbreviations for the province
+    """
+    province_abbreviations = {
+        'aceh': ['meunasah', 'matang glumpang dua', 'meuna', 'kp'],
+        'nusa_tenggara_barat': ['kampung', 'dusun'],
+    }
+
+    abbreviations = province_abbreviations.get(province.lower(), [])
+    if not abbreviations:
+        return None
+    pattern = r'\b(' + '|'.join(abbreviations) + r')\.?\s+'
+    return re.compile(pattern, re.IGNORECASE)
+
+
+def normalize_for_matching(text: str, field_type: Literal['province', 'kabupaten', 'kelurahan', 'kecamatan'] = 'kelurahan', province: Optional[str] = None) -> str:
     """
     Normalize Indonesian place names for fuzzy matching.
-    
+
     Handles:
-    - Phonetic variations (o↔u, ie↔i, etc.)
-    - Common abbreviations
+    - Common abbreviations based on province context
     - Whitespace normalization
-    
+    - Numbered prefixes for kelurahan names
+
     Args:
         text: Input text to normalize
         field_type: Type of field ('kelurahan' or 'kecamatan')
-        
+        province: Province name for context-aware abbreviation removal (optional)
+
     Returns:
         Normalized text ready for fuzzy matching
     """
     if not text:
         return ""
-    
-    # Start with base normalization
+
+    # Start with base normalization (handles whitespace)
     text = format_text(text)
     text = text.lower()
-    
-    # Indonesian phonetic normalizations
-    phonetic_replacements = {
-        # Vowel variations (common in Acehnese)
-        'oe': 'u',  # Dutch spelling  
-        'ö': 'o',
-        'ü': 'u',
-        
-        # Consonant variations
-        'dj': 'j',  # Old Indonesian spelling
-        'sy': 'sh',
-        'tj': 'c',
-        
-        # Specific Acehnese patterns
-        'ue': 'u',  # Alue → Alu
-        'lh': 'l',  # Acehnese glottal
-        'eum': 'um',  # Geulumpang → Glumpang variations
-    }
-    
-    for old, new in phonetic_replacements.items():
-        text = text.replace(old, new)
-    
-    # Normalize common prefix variations
+
+    # Normalize common prefix variations for kelurahan
     if field_type == 'kelurahan':
-        # Remove numbered prefixes
+        # Remove numbered prefixes (e.g., "1. Name" -> "Name")
         text = re.sub(r'^\d+\s*[-.]?\s*', '', text)
-        
-        # Expand abbreviations
-        text = re.sub(r'\b(kel|ds|desa|kampung|kamp|dusun|dus)\.?\s+', '', text, flags=re.IGNORECASE)
-    
-    # Remove multiple spaces
-    text = ' '.join(text.split())
-    
-    return text.strip()
+
+        # Commented out abbreviation removal to log all pure unmatched records
+        # without abbreviation normalization for documentation in comparing_pos/{province}.md
+        # if province:
+        #     pattern = _get_abbreviation_pattern(province)
+        #     if pattern:
+        #         text = pattern.sub('', text)
+
+    # Remove all spaces after all processing
+    text = text.replace(' ', '')
+
+    return text
 
 
 def convert_cyrillic_to_latin(text: str) -> str:
@@ -397,6 +406,9 @@ def normalize_kelurahan_desa(text: str) -> str:
         r'(?i)\bKamp\b': 'Kampung',
         r'(?i)\bDus\.\s*': 'Dusun ',
         r'(?i)\bDus\b': 'Dusun',
+        r'(?i)\bMns\.\s*': 'Meunasah ',
+        r'(?i)\bKampong\b': 'Kampung',
+        r'(?i)\bGampong\b': 'Kampung',
     }
 
     for pattern, replacement in replacements.items():

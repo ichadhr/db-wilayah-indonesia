@@ -186,7 +186,7 @@ def perform_exact_join(
 # FUZZY MATCHING FUNCTIONS (from scoring_cascading_polars.py)
 # ============================================================================
 
-def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str) -> pl.DataFrame:
+def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str, province: str) -> pl.DataFrame:
     """
     Add normalized columns for fuzzy similarity calculation.
     
@@ -220,19 +220,19 @@ def prepare_for_fuzzy_matching(df: pl.DataFrame, prefix: str) -> pl.DataFrame:
     # Add fuzzy-normalized columns
     df = df.with_columns([
         pl.col('provinsi').map_elements(
-            lambda x: normalize_for_matching(str(x) if x else '', 'province'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'province', province),
             return_dtype=pl.Utf8
         ).alias('norm_prov'),
         pl.col(kab_col).map_elements(
-            lambda x: normalize_for_matching(str(x) if x else '', 'kabupaten'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'kabupaten', province),
             return_dtype=pl.Utf8
         ).alias('norm_kab'),
         pl.col('kecamatan').map_elements(
-            lambda x: normalize_for_matching(str(x) if x else '', 'kecamatan'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'kecamatan', province),
             return_dtype=pl.Utf8
         ).alias('norm_kec'),
         pl.col(kel_col).map_elements(
-            lambda x: normalize_for_matching(str(x) if x else '', 'kelurahan'),
+            lambda x: normalize_for_matching(str(x) if x else '', 'kelurahan', province),
             return_dtype=pl.Utf8
         ).alias('norm_kel'),
     ])
@@ -288,7 +288,8 @@ def _deduplicate_matches(matches_df: pl.DataFrame) -> pl.DataFrame:
 
 def cascading_fuzzy_match(
     unmatched_detail_df: pl.DataFrame,
-    unmapped_pos_df: pl.DataFrame
+    unmapped_pos_df: pl.DataFrame,
+    province: str
 ) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """
     Perform cascading hierarchical fuzzy matching with hard gates.
@@ -312,7 +313,7 @@ def cascading_fuzzy_match(
         return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df
 
     # Prepare dataframes and perform cross join
-    joined = _prepare_and_join_dataframes(unmatched_detail_df, unmapped_pos_df)
+    joined = _prepare_and_join_dataframes(unmatched_detail_df, unmapped_pos_df, province)
 
     # Apply filtering and matching logic
     filtered = _apply_cascading_filters(joined)
@@ -332,12 +333,13 @@ def cascading_fuzzy_match(
 
 def _prepare_and_join_dataframes(
     unmatched_detail_df: pl.DataFrame,
-    unmapped_pos_df: pl.DataFrame
+    unmapped_pos_df: pl.DataFrame,
+    province: str
 ) -> pl.DataFrame:
     """Prepare dataframes for fuzzy matching and perform cross join."""
     # Prepare dataframes for fuzzy matching
-    detail_prep = prepare_for_fuzzy_matching(unmatched_detail_df, 'detail')
-    pos_prep = prepare_for_fuzzy_matching(unmapped_pos_df, 'pos')
+    detail_prep = prepare_for_fuzzy_matching(unmatched_detail_df, 'detail', province)
+    pos_prep = prepare_for_fuzzy_matching(unmapped_pos_df, 'pos', province)
 
     total_pairs = len(detail_prep) * len(pos_prep)
     print(f"Total possible pairs: {total_pairs:,}")
@@ -361,7 +363,7 @@ def _prepare_and_join_dataframes(
 def _apply_cascading_filters(joined: pl.DataFrame) -> pl.DataFrame:
     """Apply cascading gate filters to the joined dataframe."""
     # Apply cascading gates
-    print(f"Applying gates (Prov>={PROVINCE_THRESHOLD}, Kab>={KABUPATEN_THRESHOLD}, Kec>={KECAMATAN_THRESHOLD}, Kel>={KELURAHAN_THRESHOLD}, Overall>={OVERALL_THRESHOLD})...")
+    print(f"\nApplying gates (Prov>={PROVINCE_THRESHOLD}, Kab>={KABUPATEN_THRESHOLD}, Kec>={KECAMATAN_THRESHOLD}, Kel>={KELURAHAN_THRESHOLD}, Overall>={OVERALL_THRESHOLD})...")
 
     filtered = joined.filter(pl.col('prov_sim') >= PROVINCE_THRESHOLD)
     print(f"  After Province gate: {len(filtered):,} pairs")
@@ -379,6 +381,7 @@ def _apply_cascading_filters(joined: pl.DataFrame) -> pl.DataFrame:
     filtered = filtered.with_columns(
         (KECAMATAN_WEIGHT * pl.col('kec_sim') + KELURAHAN_WEIGHT * pl.col('kel_sim')).alias('overall_conf')
     )
+
     filtered = filtered.filter(pl.col('overall_conf') >= OVERALL_THRESHOLD)
     print(f"  After Overall gate: {len(filtered):,} pairs")
 
@@ -400,6 +403,7 @@ def _prepare_final_results(
         pl.col('detail_kecamatan').alias('kecamatan'),
         pl.col('detail_kelurahan_normalized').alias('kelurahan'),
         pl.col('detail_desa_normalized').alias('desa'),
+        pl.col('detail_keterangan').alias('keterangan'),
         pl.col('detail_original_provinsi').alias('original_provinsi'),
         pl.col('detail_provinsi').alias('provinsi'),
 
@@ -498,6 +502,7 @@ class ExactMatchStrategy(DiagnosticColumnStrategy):
             pl.col('kabupaten_kota').alias('detail_kabupaten_kota'),
             pl.col('kecamatan').alias('detail_kecamatan'),
             (pl.col(kelurahan_col).fill_null('') + pl.col(desa_col).fill_null('')).alias('detail_kelurahan_desa'),
+            pl.col('keterangan').alias('detail_keterangan'),
 
             # Perfect similarity scores
             pl.lit(1.0).alias('overall_confidence'),
@@ -533,6 +538,7 @@ class FuzzyMatchStrategy(DiagnosticColumnStrategy):
             pl.col('kabupaten_kota').alias('detail_kabupaten_kota'),
             pl.col('kecamatan').alias('detail_kecamatan'),
             (pl.col(kelurahan_col).fill_null('') + pl.col(desa_col).fill_null('')).alias('detail_kelurahan_desa'),
+            pl.col('keterangan').alias('detail_keterangan'),
 
             # Actual similarity scores
             pl.col('overall_confidence'),
@@ -568,6 +574,7 @@ class UnmatchedStrategy(DiagnosticColumnStrategy):
             pl.col('kabupaten_kota').alias('detail_kabupaten_kota'),
             pl.col('kecamatan').alias('detail_kecamatan'),
             (pl.col(kelurahan_col).fill_null('') + pl.col(desa_col).fill_null('')).alias('detail_kelurahan_desa'),
+            pl.col('keterangan').alias('detail_keterangan'),
 
             # Zero similarity scores
             pl.lit(0.0).alias('overall_confidence'),
@@ -682,7 +689,7 @@ def save_parquet_with_pos(
     final_df = final_df.drop('provinsi').rename({'original_provinsi': 'provinsi'})
 
     # Rearrange columns in exact order
-    final_df = final_df.select(['provinsi', 'kabupaten_kota', 'kecamatan', 'kode_kelurahan', 'kelurahan', 'desa', 'overall_confidence', 'kodepos'])
+    final_df = final_df.select(['provinsi', 'kabupaten_kota', 'kecamatan', 'kode_kelurahan', 'kelurahan', 'desa', 'keterangan', 'overall_confidence', 'kodepos'])
 
     # Save to parquet
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -693,16 +700,14 @@ def save_parquet_with_pos(
 def save_diagnostic_csv(
     exact_matches: pl.DataFrame,
     fuzzy_matches: pl.DataFrame,
-    unmatched_detail: pl.DataFrame,
     output_path: Path
 ) -> None:
     """
-    Save diagnostic CSV with detailed similarity scores.
+    Save diagnostic CSV with detailed similarity scores for matched records only.
 
     Args:
         exact_matches: Dataframe of exact matches
         fuzzy_matches: Dataframe of fuzzy matches
-        unmatched_detail: Dataframe of unmatched detail records
         output_path: Path to save CSV file
     """
     dfs_to_concat = []
@@ -710,7 +715,7 @@ def save_diagnostic_csv(
     # Common columns for output
     cols = [
         'detail_kode_kelurahan', 'detail_provinsi', 'detail_kabupaten_kota',
-        'detail_kecamatan', 'detail_kelurahan_desa',
+        'detail_kecamatan', 'detail_kelurahan_desa', 'detail_keterangan',
         'overall_confidence',
         'provinsi_similarity', 'kabupaten_similarity', 'kecamatan_similarity', 'kelurahan_similarity',
         'pos_provinsi', 'pos_kabupaten_kota', 'pos_kecamatan', 'pos_kelurahan_desa', 'pos_kodepos'
@@ -733,14 +738,6 @@ def save_diagnostic_csv(
         empty_count = fuzzy_df.filter(pl.col('pos_kelurahan_desa') == '').height
         print(f"Fuzzy df pos_kelurahan_desa: null={null_count}, empty={empty_count}")
 
-    # 3. Process Unmatched Records
-    if len(unmatched_detail) > 0:
-        unmatched_df = _prepare_diagnostic_columns(unmatched_detail, 'unmatched').select(cols)
-        dfs_to_concat.append(unmatched_df)
-        null_count = unmatched_df.select('pos_kelurahan_desa').null_count().item()
-        empty_count = unmatched_df.filter(pl.col('pos_kelurahan_desa') == '').height
-        print(f"Unmatched df pos_kelurahan_desa: null={null_count}, empty={empty_count}")
-
     if dfs_to_concat:
         concat_method: ConcatMethod = 'vertical'
         final_df = pl.concat(dfs_to_concat, how=concat_method)
@@ -752,16 +749,45 @@ def save_diagnostic_csv(
         print(f"Final df pos_kelurahan_desa: null={null_count}, empty={empty_count}")
 
 
-def save_unmapped_pos_parquet(
+def save_unmapped_detail_csv(
+    unmatched_detail: pl.DataFrame,
+    output_path: Path
+) -> None:
+    """
+    Save unmatched detail records to CSV file with null POS data.
+
+    Args:
+        unmatched_detail: Dataframe of unmatched detail records
+        output_path: Path to save CSV file
+    """
+    if len(unmatched_detail) == 0:
+        print("No unmatched detail records to save")
+        return
+
+    # Columns for unmatched detail records
+    cols = [
+        'detail_provinsi', 'detail_kabupaten_kota',
+        'detail_kecamatan', 'detail_kode_kelurahan', 'detail_kelurahan_desa', 'detail_keterangan'
+    ]
+
+    # Process unmatched records using the unmatched strategy
+    unmatched_df = _prepare_diagnostic_columns(unmatched_detail, 'unmatched').select(cols)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    unmatched_df.write_csv(output_path)
+    print(f"Saved {len(unmatched_df)} unmatched detail records to {output_path}")
+
+
+def save_unmapped_pos_csv(
     unmapped_pos: pl.DataFrame,
     output_path: Path
 ) -> None:
     """
-    Save unmapped POS records to parquet file.
+    Save unmapped POS records to CSV file.
 
     Args:
         unmapped_pos: Dataframe of unmapped POS records
-        output_path: Path to save parquet file
+        output_path: Path to save CSV file
     """
     if len(unmapped_pos) == 0:
         print("No unmapped POS records to save")
@@ -778,5 +804,5 @@ def save_unmapped_pos_parquet(
     ])
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_df.write_parquet(output_path, compression='snappy')
+    output_df.write_csv(output_path)
     print(f"Saved {len(output_df)} unmapped POS records to {output_path}")
