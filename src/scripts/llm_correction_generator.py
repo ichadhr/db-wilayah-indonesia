@@ -114,14 +114,23 @@ class CorrectionGenerator:
         
         content = ""  # Initialize for error handling
         try:
-            # Call LiteLLM
+            # Call LiteLLM with streaming
             response = litellm.completion(
                 messages=messages,
+                stream=True,
                 **llm_params
             )
 
-            # Extract content
-            content = getattr(getattr(response, 'choices', [{}])[0], 'message', {}).get('content', '')
+            # Stream and accumulate content
+            last_chunk = None
+            for chunk in response:
+                last_chunk = chunk
+                delta = getattr(getattr(chunk, 'choices', [{}])[0], 'delta', {})
+                delta_content = delta.get('content', '')
+                if delta_content:
+                    print(delta_content, end='', flush=True)
+                    content += delta_content
+
             if not isinstance(content, str):
                 raise ValueError(f"Unexpected response content type: {type(content)}")
 
@@ -134,8 +143,8 @@ class CorrectionGenerator:
 
             result = json.loads(content)
 
-            print(f"[OK] LLM call successful")
-            usage = getattr(response, 'usage', None)
+            print(f"\n[OK] LLM call successful")
+            usage = getattr(last_chunk, 'usage', None) if last_chunk else None
             tokens_used = getattr(usage, 'total_tokens', 'unknown') if usage else 'unknown'
             print(f"  Tokens used: {tokens_used}")
 

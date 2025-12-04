@@ -8,6 +8,7 @@ docs/pos_data_correction_process.md and src/datas/comparing_pos/aceh.md.
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import re
 
 import polars as pl
 
@@ -149,8 +150,50 @@ This document tracks corrections applied to POS (Pos Indonesia) data for {provin
 {generate_corrections_table(corrections)}
 """
     
+    # Filter unmapped_detail to exclude records that now have corrections
+    # A detail record should be removed from "unmapped" only if its specific name
+    # appears as the corrected_value in a correction (meaning POS was updated to match it)
+    if unmapped_detail is not None and len(corrections) > 0:
+        # Build set of corrected values per field type
+        corrected_kelurahan = {
+            (c.get('province', ''), c.get('regency_city', ''), c.get('corrected_value', ''))
+            for c in corrections if c.get('field') == 'desa_kelurahan'
+        }
+        corrected_kecamatan = {
+            (c.get('province', ''), c.get('regency_city', ''), c.get('corrected_value', ''))
+            for c in corrections if c.get('field') == 'kecamatan'
+        }
+        corrected_kabupaten = {
+            (c.get('province', ''), c.get('corrected_value', ''))
+            for c in corrections if c.get('field') == 'kabupaten_kota'
+        }
+        
+        # Only filter if we have corrections
+        if corrected_kelurahan or corrected_kecamatan or corrected_kabupaten:
+            def normalize_name(name: str) -> str:
+                return re.sub(r'^\d+\s*', '', name)
+
+            # Filter out detail records that now have matches
+            def is_corrected(row: dict) -> bool:
+                prov = row.get('detail_provinsi', '')
+                reg = normalize_name(row.get('detail_kabupaten_kota', ''))
+                kel = normalize_name(row.get('detail_kelurahan_desa', ''))
+                kec = normalize_name(row.get('detail_kecamatan', ''))
+
+                # Check if this detail record's name matches any corrected value
+                return (
+                    (prov, reg, kel) in corrected_kelurahan or
+                    (prov, reg, kec) in corrected_kecamatan or
+                    (prov, reg) in corrected_kabupaten
+                )
+            
+            unmapped_detail = unmapped_detail.filter(
+                ~pl.struct(['detail_provinsi', 'detail_kabupaten_kota', 'detail_kelurahan_desa', 'detail_kecamatan'])
+                .map_elements(is_corrected, return_dtype=pl.Boolean)
+            )
+
     # Add remaining unmapped records section if provided
-    if unmapped_detail is not None or unmapped_pos is not None:
+    if unmapped_detail is not None:
         markdown += """
 ## Remaining Unmapped Records
 
@@ -158,20 +201,11 @@ After applying the above corrections, the following records remain unmapped and 
 
 """
         
-        if unmapped_detail is not None:
-            markdown += """### Unmapped Detail Records
+        markdown += """### Unmapped Detail Records
 These official government records could not be matched to POS data:
 
 """
-            markdown += generate_unmapped_detail_table(unmapped_detail)
-        
-        if unmapped_pos is not None:
-            markdown += """
-### Unmapped POS Records
-These POS records could not be matched to official government data:
-
-"""
-            markdown += generate_unmapped_pos_table(unmapped_pos)
+        markdown += generate_unmapped_detail_table(unmapped_detail)
     
     # Add footer with generation timestamp
     markdown += f"""
