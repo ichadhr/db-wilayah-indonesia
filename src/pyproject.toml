@@ -8,10 +8,12 @@ dependencies = [
     "asyncio>=4.0.0",
     "beautifulsoup4>=4.13.5",
     "img2pdf>=0.6.1",
+    "litellm>=1.80.0",
     "marker-pdf[full]>=1.9.3",
     "notebook>=7.4.7",
     "pdfplumber>=0.11.7",
     "polars>=1.33.1",
+    "polars-ds>=0.10.3",
     "pyarrow>=22.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -20,6 +22,7 @@ dependencies = [
     "python-levenshtein>=0.27.3",
     "recordlinkage>=0.16",
     "requests>=2.32.5",
+    "tabulate>=0.9.0",
     "tqdm>=4.67.1",
 ]
 
