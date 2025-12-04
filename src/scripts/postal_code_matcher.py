@@ -37,7 +37,8 @@ from utils.matcher import (
     save_parquet_with_pos,
     save_diagnostic_csv,
     save_unmapped_detail_csv,
-    save_unmapped_pos_csv
+    save_unmapped_pos_csv,
+    _extract_kecamatan_hints_from_similarity_matrix
 )
 
 
@@ -127,11 +128,30 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         # Step 3: Fuzzy matching on remaining unmatched records
         print("\n=== Stage 2: Fuzzy Matching ===")
         if len(unmatched_detail) > 0 and len(unmapped_pos) > 0:
-            fuzzy_matches, final_unmatched_detail, final_unmapped_pos = cascading_fuzzy_match(
+            fuzzy_matches, final_unmatched_detail, final_unmapped_pos, similarity_matrix = cascading_fuzzy_match(
                 unmatched_detail,
                 unmapped_pos,
                 province
             )
+            
+            # Extract kecamatan similarity hints from the similarity matrix for LLM
+            if len(final_unmatched_detail) > 0 and len(similarity_matrix) > 0:
+                print("Extracting kecamatan similarity hints for LLM context...")
+                # Get kode_kelurahan values of final unmatched detail records
+                unmatched_kode_kelurahan = set(final_unmatched_detail['kode_kelurahan'].to_list())
+                
+                # Extract hints from similarity matrix
+                hints_df = _extract_kecamatan_hints_from_similarity_matrix(
+                    similarity_matrix,
+                    unmatched_kode_kelurahan
+                )
+                
+                # Join hints back to unmatched detail
+                final_unmatched_detail = final_unmatched_detail.join(
+                    hints_df,
+                    on='kode_kelurahan',
+                    how='left'
+                )
         else:
             print("Skipping fuzzy matching (no unmatched records)")
             fuzzy_matches = pl.DataFrame()
@@ -142,7 +162,7 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
         print("\n=== Saving Outputs ===")
         province_log_dir = log_dir / province
         province_log_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Output 1: Combined parquet with postal codes
         save_parquet_with_pos(
             detail_normalized,
@@ -151,7 +171,7 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
             final_unmatched_detail,
             province_log_dir / f"{province}_kabupaten_kota_with_pos.parquet"
         )
-        
+
         # Output 2: Diagnostic CSV with similarity scores
         save_diagnostic_csv(
             exact_matches,
@@ -159,7 +179,7 @@ def match_province(province: str, parquet_dir: Path, log_dir: Path) -> None:
             province_log_dir / f"{province}_log_matches.csv"
         )
 
-        # Output 3: Unmapped detail records
+        # Output 3: Unmapped detail records (now with LLM hints)
         save_unmapped_detail_csv(
             final_unmatched_detail,
             province_log_dir / f"{province}_remain_unmapped_detail.csv"

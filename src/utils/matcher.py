@@ -290,7 +290,7 @@ def cascading_fuzzy_match(
     unmatched_detail_df: pl.DataFrame,
     unmapped_pos_df: pl.DataFrame,
     province: str
-) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """
     Perform cascading hierarchical fuzzy matching with hard gates.
 
@@ -300,9 +300,11 @@ def cascading_fuzzy_match(
     Args:
         unmatched_detail_df: Detail records not matched by exact join
         unmapped_pos_df: POS records not used in exact join
+        province: Province name for normalization
 
     Returns:
-        Tuple of (matched_fuzzy_df, final_unmatched_detail_df, final_unmapped_pos_df)
+        Tuple of (matched_fuzzy_df, final_unmatched_detail_df, final_unmapped_pos_df, similarity_matrix)
+        - similarity_matrix: Full cross-join with all computed similarities (for LLM hints)
     """
     print(f"\n=== Cascading Fuzzy Matching ===")
     print(f"Unmatched detail records: {len(unmatched_detail_df)}")
@@ -310,9 +312,9 @@ def cascading_fuzzy_match(
 
     if len(unmatched_detail_df) == 0 or len(unmapped_pos_df) == 0:
         print("No fuzzy matching needed (no unmatched records)")
-        return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df
+        return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df, pl.DataFrame()
 
-    # Prepare dataframes and perform cross join
+    # Prepare dataframes and perform cross join with similarity calculations
     joined = _prepare_and_join_dataframes(unmatched_detail_df, unmapped_pos_df, province)
 
     # Apply filtering and matching logic
@@ -320,15 +322,19 @@ def cascading_fuzzy_match(
 
     if len(filtered) == 0:
         print("No fuzzy matches passed all gates")
-        return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df
+        # Return full similarity matrix for hint extraction
+        return pl.DataFrame(), unmatched_detail_df, unmapped_pos_df, joined
 
     # Perform 1-to-1 deduplication
     filtered = _deduplicate_matches(filtered)
     print(f"After deduplication: {len(filtered)} unique 1-to-1 matches")
 
-    # Prepare results
-    result = _prepare_final_results(filtered, unmatched_detail_df, unmapped_pos_df)
-    return result
+    # Prepare results and return full similarity matrix
+    matched_fuzzy, final_unmatched_detail, final_unmapped_pos = _prepare_final_results(
+        filtered, unmatched_detail_df, unmapped_pos_df
+    )
+    
+    return matched_fuzzy, final_unmatched_detail, final_unmapped_pos, joined
 
 
 def _prepare_and_join_dataframes(
@@ -386,6 +392,73 @@ def _apply_cascading_filters(joined: pl.DataFrame) -> pl.DataFrame:
     print(f"  After Overall gate: {len(filtered):,} pairs")
 
     return filtered
+
+
+def _extract_kecamatan_hints_from_similarity_matrix(
+    similarity_matrix: pl.DataFrame,
+    unmatched_kode_kelurahan: set
+) -> pl.DataFrame:
+    """
+    Extract kecamatan similarity hints from the full similarity matrix.
+    
+    Args:
+        similarity_matrix: Full cross-join with all similarity scores
+        unmatched_kode_kelurahan: Set of kode_kelurahan values that remained unmatched
+        
+    Returns:
+        DataFrame with kode_kelurahan and potential_kecamatan_matches columns
+    """
+    if len(similarity_matrix) == 0 or len(unmatched_kode_kelurahan) == 0:
+        return pl.DataFrame({
+            'kode_kelurahan': pl.Series([], dtype=pl.Utf8),
+            'potential_kecamatan_matches': pl.Series([], dtype=pl.Utf8)
+        })
+    
+    # Filter similarity matrix to only unmatched detail records using kode_kelurahan
+    unmatched_similarities = similarity_matrix.filter(
+        pl.col('detail_kode_kelurahan').is_in(list(unmatched_kode_kelurahan))
+    )
+    
+    if len(unmatched_similarities) == 0:
+        return pl.DataFrame({
+            'kode_kelurahan': pl.Series([], dtype=pl.Utf8),
+            'potential_kecamatan_matches': pl.Series([], dtype=pl.Utf8)
+        })
+    
+    # Filter by kecamatan threshold to only keep relevant matches
+    # Uses same threshold as fuzzy matching gate (KECAMATAN_THRESHOLD = 0.75)
+    high_similarity = unmatched_similarities.filter(
+        pl.col('kec_sim') >= KECAMATAN_THRESHOLD
+    )
+    
+    if len(high_similarity) == 0:
+        # No matches above threshold
+        return pl.DataFrame({
+            'kode_kelurahan': pl.Series([], dtype=pl.Utf8),
+            'potential_kecamatan_matches': pl.Series([], dtype=pl.Utf8)
+        })
+    
+    # Group by detail record and kecamatan to get unique matches with max similarity
+    hints = high_similarity.group_by(['detail_kode_kelurahan', 'pos_kecamatan']).agg(
+        pl.col('kec_sim').max().alias('similarity')
+    ).group_by('detail_kode_kelurahan').agg(
+        # Get only the single best match (highest similarity)
+        pl.struct([
+            pl.col('pos_kecamatan'),
+            pl.col('similarity')
+        ]).sort_by('similarity', descending=True).head(1).alias('top_match')
+    ).with_columns(
+        # Extract the top match and format as "Kecamatan Name (score)"
+        pl.col('top_match').map_elements(
+            lambda matches: f"{matches[0]['pos_kecamatan']} ({round(float(matches[0]['similarity']), 2)})" 
+            if matches is not None and len(matches) > 0 else None,
+            return_dtype=pl.Utf8
+        ).alias('potential_kecamatan_matches')
+    ).select(['detail_kode_kelurahan', 'potential_kecamatan_matches']).rename(
+        {'detail_kode_kelurahan': 'kode_kelurahan'}
+    )
+    
+    return hints
 
 
 def _prepare_final_results(
@@ -567,7 +640,7 @@ class UnmatchedStrategy(DiagnosticColumnStrategy):
 
     def prepare_columns(self, df: pl.DataFrame, kelurahan_col: str, desa_col: str) -> pl.DataFrame:
         """Prepare columns for unmatched records (no POS data, zero similarities)."""
-        return df.select([
+        base_columns = [
             # Base detail columns
             pl.col('kode_kelurahan').alias('detail_kode_kelurahan'),
             pl.col('original_provinsi').alias('detail_provinsi'),
@@ -595,7 +668,13 @@ class UnmatchedStrategy(DiagnosticColumnStrategy):
             pl.col('kabupaten_kota').alias('detail_kabupaten_kota_norm'),
             pl.col('kecamatan').alias('detail_kecamatan_norm'),
             pl.col('kelurahan').alias('detail_kelurahan_norm'),
-        ])
+        ]
+
+        # Add kecamatan hints if they exist
+        if 'potential_kecamatan_matches' in df.columns:
+            base_columns.append(pl.col('potential_kecamatan_matches'))
+
+        return df.select(base_columns)
 
 
 def _prepare_diagnostic_columns(
@@ -764,11 +843,15 @@ def save_unmapped_detail_csv(
         print("No unmatched detail records to save")
         return
 
-    # Columns for unmatched detail records
+    # Base columns for unmatched detail records
     cols = [
         'detail_provinsi', 'detail_kabupaten_kota',
         'detail_kecamatan', 'detail_kode_kelurahan', 'detail_kelurahan_desa', 'detail_keterangan'
     ]
+
+    # Add kecamatan hints column if it exists
+    if 'potential_kecamatan_matches' in unmatched_detail.columns:
+        cols.append('potential_kecamatan_matches')
 
     # Process unmatched records using the unmatched strategy
     unmatched_df = _prepare_diagnostic_columns(unmatched_detail, 'unmatched').select(cols)
