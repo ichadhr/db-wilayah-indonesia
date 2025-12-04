@@ -8,6 +8,15 @@ from .pdf_table import (
     DistrictIndexData,
     DetailsData
 )
+from .pos_correction import (
+    NormalizedDetailRecord,
+    NormalizedPosRecord,
+    MatchedRecord,
+    UnmatchedDetailRecord,
+    UnmappedPosRecord,
+    MatchResult
+)
+from .output import PostalMatcherOutput
 
 __all__ = [
     'KodeWilayah',
@@ -16,4 +25,11 @@ __all__ = [
     'RegencyIndexData',
     'DistrictIndexData',
     'DetailsData',
+    'NormalizedDetailRecord',
+    'NormalizedPosRecord',
+    'MatchedRecord',
+    'UnmatchedDetailRecord',
+    'UnmappedPosRecord',
+    'MatchResult',
+    'PostalMatcherOutput',
 ]
