@@ -9,7 +9,7 @@ scoring_cascading_polars.py (fuzzy matching) into reusable utility functions.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from pathlib import Path
 import polars as pl
 import polars_ds as pds
@@ -17,6 +17,14 @@ from pathlib import Path
 from typing import Tuple, List
 from polars.type_aliases import ConcatMethod
 
+from models import (
+    NormalizedDetailRecord,
+    NormalizedPosRecord,
+    MatchedRecord,
+    UnmatchedDetailRecord,
+    UnmappedPosRecord,
+    MatchResult
+)
 from utils.text_utils import normalize_kecamatan, normalize_kelurahan_desa, normalize_for_matching
 
 
@@ -37,6 +45,16 @@ KELURAHAN_WEIGHT = 0.6
 # ============================================================================
 
 def normalize_detail_data(df: pl.DataFrame, province: str) -> pl.DataFrame:
+    """
+    Prepare detail dataframe by filtering and normalizing.
+
+    Args:
+        df: Raw detail dataframe
+        province: Province name
+
+    Returns:
+        Prepared detail dataframe with normalized columns (compatible with NormalizedDetailRecord fields)
+    """
     """
     Prepare detail dataframe by filtering and normalizing.
     
@@ -92,6 +110,16 @@ def normalize_detail_data(df: pl.DataFrame, province: str) -> pl.DataFrame:
 def normalize_pos_data(df: pl.DataFrame, province: str) -> pl.DataFrame:
     """
     Prepare POS dataframe by normalizing columns.
+
+    Args:
+        df: Raw POS dataframe
+        province: Province name
+
+    Returns:
+        Prepared POS dataframe with normalized columns (compatible with NormalizedPosRecord fields)
+    """
+    """
+    Prepare POS dataframe by normalizing columns.
     
     Args:
         df: Raw POS dataframe
@@ -129,6 +157,19 @@ def perform_exact_join(
     detail_df: pl.DataFrame,
     pos_df: pl.DataFrame
 ) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """
+    Perform exact left join between normalized detail and POS dataframes.
+
+    Args:
+        detail_df: Normalized detail dataframe
+        pos_df: Normalized POS dataframe
+
+    Returns:
+        Tuple of (matched_df, unmatched_detail_df, unmapped_pos_df)
+        - matched_df: Records with exact matches (compatible with MatchedRecord fields)
+        - unmatched_detail_df: Detail records without matches (compatible with UnmatchedDetailRecord fields)
+        - unmapped_pos_df: POS records without matches (compatible with UnmappedPosRecord fields)
+    """
     """
     Perform exact left join between normalized detail and POS dataframes.
     
@@ -291,6 +332,24 @@ def cascading_fuzzy_match(
     unmapped_pos_df: pl.DataFrame,
     province: str
 ) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """
+    Perform cascading hierarchical fuzzy matching with hard gates.
+
+    Each administrative level must independently pass its threshold.
+    Implements 1-to-1 matching with strict deduplication.
+
+    Args:
+        unmatched_detail_df: Detail records not matched by exact join
+        unmapped_pos_df: POS records not used in exact join
+        province: Province name for normalization
+
+    Returns:
+        Tuple of (matched_fuzzy_df, final_unmatched_detail_df, final_unmapped_pos_df, similarity_matrix)
+        - matched_fuzzy_df: Fuzzy matched records (compatible with MatchedRecord fields)
+        - final_unmatched_detail_df: Detail records still unmatched (compatible with UnmatchedDetailRecord fields)
+        - final_unmapped_pos_df: POS records still unmapped (compatible with UnmappedPosRecord fields)
+        - similarity_matrix: Full cross-join with all computed similarities (for LLM hints)
+    """
     """
     Perform cascading hierarchical fuzzy matching with hard gates.
 

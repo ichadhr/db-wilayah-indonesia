@@ -29,6 +29,7 @@ if str(src_dir) not in sys.path:
 
 import polars as pl
 
+from models import PostalMatcherOutput
 from utils.matcher import (
     normalize_detail_data,
     normalize_pos_data,
@@ -42,12 +43,13 @@ from utils.matcher import (
 )
 
 
-class Config:
-    """Configuration for postal code matching."""
-    DEFAULT_PARQUET_DIR = "src/output/parquet"
-    LOG_DIR = "src/log"
-    DETAIL_SUFFIX = "_kabupaten_kota_detail.parquet"
-    POS_SUFFIX = "_kabupaten_kota_pos.parquet"
+# Configuration using Pydantic model
+DEFAULT_CONFIG = PostalMatcherOutput(
+    parquet_dir=Path("src/output/parquet"),
+    log_dir=Path("src/log"),
+    detail_suffix="_kabupaten_kota_detail.parquet",
+    pos_suffix="_kabupaten_kota_pos.parquet"
+)
 
 
 class Tee(io.StringIO):
@@ -75,8 +77,8 @@ def load_parquet_files(province: str, parquet_dir: Path) -> Tuple[pl.DataFrame, 
         Tuple of (detail_df, pos_df)
     """
     province_dir = parquet_dir / province
-    detail_file = province_dir / f"{province}{Config.DETAIL_SUFFIX}"
-    pos_file = province_dir / f"{province}{Config.POS_SUFFIX}"
+    detail_file = province_dir / f"{province}{DEFAULT_CONFIG.detail_suffix}"
+    pos_file = province_dir / f"{province}{DEFAULT_CONFIG.pos_suffix}"
     
     if not detail_file.exists():
         raise FileNotFoundError(f"Detail file not found: {detail_file}")
@@ -229,10 +231,10 @@ def main():
         epilog='Combines exact and fuzzy matching for accurate postal code assignment'
     )
     parser.add_argument('--province', type=str, help='Specific province to process')
-    parser.add_argument('--parquet-dir', type=str, default=Config.DEFAULT_PARQUET_DIR,
-                       help=f'Base parquet directory (default: {Config.DEFAULT_PARQUET_DIR})')
-    parser.add_argument('--log-dir', type=str, default=Config.LOG_DIR,
-                       help=f'Output log directory (default: {Config.LOG_DIR})')
+    parser.add_argument('--parquet-dir', type=str, default=str(DEFAULT_CONFIG.parquet_dir),
+                       help=f'Base parquet directory (default: {DEFAULT_CONFIG.parquet_dir})')
+    parser.add_argument('--log-dir', type=str, default=str(DEFAULT_CONFIG.log_dir),
+                       help=f'Output log directory (default: {DEFAULT_CONFIG.log_dir})')
     
     args = parser.parse_args()
     
