@@ -33,10 +33,6 @@ from .paths import (
     get_image_output_path,
     sanitize_folder_file_name
 )
-
-# Correction utilities
-from .correction_bsni import CorrectionLoader
-
 # Data merger utilities
 from .data_merger import ParquetFileMerger
 
@@ -87,8 +83,6 @@ __all__ = [
     'get_parquet_output_path',
     'get_image_output_path',
     'sanitize_folder_file_name',
-    # Correction
-    'CorrectionLoader',
     # Data merger
     'ParquetFileMerger',
     # Normalization

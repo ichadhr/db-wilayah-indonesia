@@ -666,9 +666,9 @@ class PDFTableExtractor(PDFTableExtractorBase):
             # Prepare districts for join
             districts_join = districts_with_ibukota
 
-            # Apply corrections to normalized_ibukota using CorrectionLoader
-            from utils.correction_bsni import CorrectionLoader
-            corrector = CorrectionLoader()
+            # Apply corrections to normalized_ibukota using BSNICorrection
+            from pipeline.corrections.bsni import BSNICorrection
+            corrector = BSNICorrection()
             
             def apply_kecamatan_correction(struct_val):
                 val = struct_val["ibukota"]

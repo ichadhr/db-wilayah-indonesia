@@ -1,12 +1,12 @@
 # Kecamatan Index Comparison and Corrections
 
 ## Introduction
-This document tracks unmatched city names from kecamatan index processing against BSNI kode_wilayah data, documents applied corrections, and outlines the planned CorrectionLoader integration to automate fixes. The goal is to improve data accuracy by resolving OCR errors, spelling issues, and regulatory name changes.
+This document tracks unmatched city names from kecamatan index processing against BSNI kode_wilayah data, documents applied corrections, and outlines the planned BSNICorrection integration to automate fixes. The goal is to improve data accuracy by resolving OCR errors, spelling issues, and regulatory name changes.
 
 ## Table of Contents
 - [Unmatched City Names](#unmatched-city-names)
 - [Corrected Ibukota Names](#corrected-ibukota-names)
-- [CorrectionLoader Integration](#correctionloader-integration)
+- [BSNICorrection Integration](#bsnicorrection-integration)
 
 ## Unmatched City Names
 **Status**: ✅ **All resolved!** (0 unmatched entries as of 2025-11-20)
@@ -97,10 +97,10 @@ These corrections are documented in [`src/utils/correction_bsni.csv`](src/utils/
 | 36 | Pandan | PDN | EXISTING CODE | Kabupaten Tapanuli Tengah | Sumatra Utara | kecamatan_index | Wrong city name: "Sibolga" should be "Pandan" |
 | 37 | Sentani | STN | EXISTING CODE | Kabupaten Jayapura | Papua | kecamatan_index | Wrong city name: "Jayapura" should be "Sentani" |
 
-# CorrectionLoader Integration
+# BSNICorrection Integration
 
 ## Overview
-The `CorrectionLoader` class in `src/utils/correction_bsni.py` will load and apply corrections from `src/utils/correction_bsni.csv` to improve matching accuracy in the kecamatan and kode_wilayah pipelines. This implements a "Both Sides Application" approach, correcting data on both the extracted kecamatan side and the reference kode_wilayah side.
+The `BSNICorrection` class in `src/pipeline/corrections/bsni.py` will load and apply corrections from `src/datas/correction_bsni.csv` to improve matching accuracy in the kecamatan and kode_wilayah pipelines. This implements a "Both Sides Application" approach, correcting data on both the extracted kecamatan side and the reference kode_wilayah side.
 
 ## Correction Application Flow
 ```mermaid
@@ -128,7 +128,7 @@ flowchart TD
   - **Context-aware**: Matches `kabupaten_kota` from metadata to ensure location-specific accuracy
   - Updates final dataframe with corrected `ibukota_kabupaten_kota` values
 - **Impact**: Resolved 28 unmatched entries by addressing OCR/spelling errors
-- **Key Files**: [`src/extractor/pdf_table_extractor.py`](src/extractor/pdf_table_extractor.py), [`src/utils/correction_bsni.csv`](src/utils/correction_bsni.csv)
+- **Key Files**: [`src/extractor/pdf_table_extractor.py`](src/extractor/pdf_table_extractor.py), [`src/datas/correction_bsni.csv`](src/datas/correction_bsni.csv)
 
 ## Kode_Wilayah Side
 - **Integration Point**: `KodeWilayahOCR._process_table_text()` in [`src/extractor/kode_wilayah_ocr.py`](src/extractor/kode_wilayah_ocr.py) (lines 145-177)
@@ -139,7 +139,7 @@ flowchart TD
   - **NEW**: Update `kabupaten_kota` from metadata when specified (lines 163-165)
 - **Logic**: Uses metadata to update both city name and regency name for consistency
 - **Impact**: Corrected 11 OCR errors and applied regulatory updates (e.g., UU changes)
-- **Key Files**: [`src/extractor/kode_wilayah_ocr.py`](src/extractor/kode_wilayah_ocr.py), [`src/utils/correction_bsni.csv`](src/utils/correction_bsni.csv)
+- **Key Files**: [`src/extractor/kode_wilayah_ocr.py`](src/extractor/kode_wilayah_ocr.py), [`src/datas/correction_bsni.csv`](src/datas/correction_bsni.csv)
 
 ## Implementation Notes
 - CSV structure works well for current dataset (39 corrections); `entity_level` column retained for future extensibility

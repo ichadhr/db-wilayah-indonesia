@@ -11,7 +11,7 @@ from utils.text_utils import format_text
 logger = logging.getLogger(__name__)
 
 
-class CorrectionLoader:
+class BSNICorrection:
     """
     Loads and applies corrections from correction_bsni.csv.
     """
@@ -22,14 +22,14 @@ class CorrectionLoader:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(CorrectionLoader, cls).__new__(cls)
+            cls._instance = super(BSNICorrection, cls).__new__(cls)
             cls._instance._load_corrections()
         return cls._instance
 
     @error_handler(operation_name="load_corrections", log_errors=True, re_raise=False)
     def _load_corrections(self):
         """Load corrections from CSV file."""
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction_bsni.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv")
 
         if not os.path.exists(csv_path):
             log_error(
@@ -143,7 +143,7 @@ class CorrectionLoader:
         Returns:
             Polars DataFrame containing all corrections, or None if import fails
         """
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "datas", "correction_bsni.csv")
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv")
         try:
             if os.path.exists(csv_path):
                 return pl.read_csv(csv_path)

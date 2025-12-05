@@ -143,8 +143,8 @@ class KodeWilayahOCR:
         column_map = self._identify_table_columns(df.columns)
 
         # Initialize corrector
-        from utils.correction_bsni import CorrectionLoader
-        corrector = CorrectionLoader()
+        from pipeline.corrections.bsni import BSNICorrection
+        corrector = BSNICorrection()
 
         # Extract and validate records
         cleaned_records = []
