@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLM-based Postal Code Correction Generator
+LLM-based Postal Code Dataset Correction
 
 This script uses Large Language Models to analyze unmapped postal code records
 and generate corrections based on semantic understanding of the detail_keterangan
@@ -9,18 +9,16 @@ and official references.
 
 Usage:
     # Single province
-    python src/scripts/llm_correction_generator.py --province aceh
+    python src/scripts/llm_postal_dataset_correction.py --province aceh
     
     # All provinces
-    python src/scripts/llm_correction_generator.py
+    python src/scripts/llm_postal_dataset_correction.py
     
     # With custom configuration
-    python src/scripts/llm_correction_generator.py --province aceh --dry-run
+    python src/scripts/llm_postal_dataset_correction.py --province aceh --dry-run
 """
 
 import argparse
-import json
-import re
 import sys
 import traceback
 from pathlib import Path
@@ -34,24 +32,21 @@ if str(src_dir) not in sys.path:
 import polars as pl
 from tqdm import tqdm
 
-try:
-    import litellm
-except ImportError:
-    print("Error: litellm not installed. Run: uv add litellm")
-    sys.exit(1)
-
-from config.llm_config import load_config, LLMConfig
-from utils.llm_prompt_builder import build_complete_prompt
-from utils.markdown_generator import save_markdown_report
-from utils.json_output_handler import save_json_output, export_corrections_to_csv
+# Use refactored LLM module
+from utils.llm.config import load_config, LLMConfig
+from utils.llm.base_client import LLMClient
+from utils.llm.schemas.postal_correction import build_complete_prompt
+from utils.llm.handlers.markdown_handler import save_markdown_report
+from utils.llm.handlers.json_handler import save_json_output, export_corrections_to_csv
 
 
-class CorrectionGenerator:
+class PostalCorrectionGenerator:
     """Generates corrections for unmapped postal code records using LLM."""
     
     def __init__(self, config: LLMConfig):
         """Initialize correction generator with configuration."""
         self.config = config
+        self.llm = LLMClient(config)  # Use reusable LLM client
         
     def load_unmapped_data(self, province: str) -> tuple[pl.DataFrame, pl.DataFrame]:
         """
@@ -81,98 +76,6 @@ class CorrectionGenerator:
         print(f"Loaded {len(unmapped_pos):,} unmapped POS records")
         
         return unmapped_detail, unmapped_pos
-    
-    def call_llm(self, system_prompt: str, user_prompt: str, output_schema: dict) -> dict[str, Any]:
-        """
-        Call LLM for correction analysis.
-        
-        Args:
-            system_prompt: System role definition
-            user_prompt: User query with data
-            output_schema: JSON schema for structured output
-            
-        Returns:
-            Parsed JSON response
-        """
-        # Get LiteLLM parameters
-        llm_params = self.config.get_litellm_params()
-        
-        # Build messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-        
-        # Add schema instruction
-        messages.append({
-            "role": "user",
-            "content": f"Output must be valid JSON matching this schema:\n{json.dumps(output_schema, indent=2)}"
-        })
-        
-        print(f"\nCalling LLM: {llm_params['model']}")
-        print(f"Temperature: {llm_params['temperature']}, Max Tokens: {llm_params['max_tokens']}")
-        
-        content = ""  # Initialize for error handling
-        try:
-            # Call LiteLLM with streaming
-            response = litellm.completion(
-                messages=messages,
-                stream=True,
-                **llm_params
-            )
-
-            # Stream and accumulate content
-            last_chunk = None
-            for chunk in response:
-                last_chunk = chunk
-                delta = getattr(getattr(chunk, 'choices', [{}])[0], 'delta', {})
-                delta_content = delta.get('content', '')
-                if delta_content:
-                    print(delta_content, end='', flush=True)
-                    content += delta_content
-
-            if not isinstance(content, str):
-                raise ValueError(f"Unexpected response content type: {type(content)}")
-
-            # Parse JSON
-            # Try to find JSON in response (sometimes LLMs wrap it in markdown)
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-
-            result = json.loads(content)
-
-            print(f"\n[OK] LLM call successful")
-            usage = getattr(last_chunk, 'usage', None) if last_chunk else None
-            tokens_used = getattr(usage, 'total_tokens', 'unknown') if usage else 'unknown'
-            print(f"  Tokens used: {tokens_used}")
-
-            return result
-
-        except json.JSONDecodeError as e:
-            print(f"Error: Failed to parse LLM response as JSON")
-            print(f"JSON Error: {e}")
-            if isinstance(content, str) and content:
-                print(f"Response length: {len(content)} characters")
-                print(f"Response content (first 1000 chars): {content[:1000]}...")
-                if len(content) > 1000:
-                    print(f"Response content (last 1000 chars): ...{content[-1000:]}")
-
-                # Try to extract JSON if wrapped in other text
-                json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                if json_match:
-                    try:
-                        result = json.loads(json_match.group())
-                        print("[OK] Successfully extracted JSON from response")
-                        return result
-                    except json.JSONDecodeError:
-                        pass
-
-            raise
-        except Exception as e:
-            print(f"Error calling LLM: {e}")
-            raise
     
     def validate_and_flag_corrections(self, corrections: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
@@ -249,8 +152,8 @@ class CorrectionGenerator:
                 print(f"User prompt length: {len(user_prompt)} chars")
                 return {"province": province, "status": "dry_run"}
             
-            # Step 3: Call LLM
-            llm_response = self.call_llm(system_prompt, user_prompt, output_schema)
+            # Step 3: Call LLM using LLMClient
+            llm_response = self.llm.call_llm(system_prompt, user_prompt, output_schema)
             
             # Step 4: Extract and validate corrections
             raw_corrections = llm_response.get("corrections", [])
@@ -268,12 +171,16 @@ class CorrectionGenerator:
             
             # Step 5: Save outputs
             print("\n=== Saving Outputs ===")
-            
+
+            # Define output directory for province
+            province_output_dir = self.config.output_markdown_dir / province
+            province_output_dir.mkdir(parents=True, exist_ok=True)
+
             # Save markdown report
             markdown_path = save_markdown_report(
                 province=province,
                 corrections=validated_corrections,
-                output_dir=self.config.output_markdown_dir,
+                output_dir=province_output_dir,
                 unmapped_detail=unmapped_detail,
                 unmapped_pos=unmapped_pos
             )
@@ -283,13 +190,13 @@ class CorrectionGenerator:
             json_path = save_json_output(
                 province=province,
                 corrections=validated_corrections,
-                output_dir=self.config.output_json_dir,
+                output_dir=province_output_dir,
                 confidence_threshold=self.config.confidence_threshold_auto_apply
             )
             print(f"[OK] JSON: {json_path}")
 
             # Save diagnostic CSV
-            diagnostic_path = self.config.output_log_dir / province / f"{province}_llm_diagnostic.csv"
+            diagnostic_path = province_output_dir / f"{province}_llm_diagnostic.csv"
             export_corrections_to_csv(validated_corrections, diagnostic_path)
             print(f"[OK] Diagnostic CSV: {diagnostic_path}")
             
@@ -363,13 +270,14 @@ def main():
             return
         
         # Initialize generator
-        generator = CorrectionGenerator(config)
+        generator = PostalCorrectionGenerator(config)
         
         if args.province:
             # Process single province
             result = generator.generate_corrections(args.province, dry_run=args.dry_run)
             
             if result["status"] == "success":
+                print("CAUTION: ALWAYS CHECK THE OUTPUT FROM LLM. YOU SHOULD VALIDATE IT.")
                 print("\n[OK] Processing complete!")
             elif result["status"] == "error":
                 print(f"\n[FAIL] Processing failed: {result.get('error')}")

@@ -35,19 +35,34 @@ def build_system_prompt() -> str:
    - Kelurahan/Desa: ≥ 0.70
    - Overall weighted score: ≥ 0.80
 
-**Special Cases**:
-- If `detail_keterangan` explicitly mentions kecamatan relocation, the kecamatan gate can be overridden
-- Consider `potential_kecamatan_matches` when evaluating corrections - high similarity (>0.8) may indicate the same location
-- Always prioritize official government documentation over POS data
-- Flag any matches where kecamatan names differ significantly
+**DATA STRUCTURE - CRITICAL**:
 
-**CRITICAL - Multi-Level Analysis**:
-You MUST systematically check for corrections at ALL administrative levels:
-- kabupaten_kota (regency/city level)
-- kecamatan (district level) 
-- desa_kelurahan (village level)
+Detail record columns:
+- `detail_provinsi`, `detail_kabupaten_kota`, `detail_kecamatan`: Administrative hierarchy (CURRENT official names)
+- `detail_kode_kelurahan`: Administrative code
+- `detail_kelurahan_desa`: Village name (CURRENT official) - may have SEQUENCE number prefix (see below)
+- `detail_keterangan`: Historical context - may reference OTHER records, do NOT assume applies to THIS row
+- `potential_kecamatan_matches`: High-similarity kecamatan from POS data
 
-Do NOT focus only on desa_kelurahan! Kecamatan and kabupaten_kota corrections are equally important.
+**CRITICAL RULES**:
+1. Column values = CURRENT official names (authoritative source of truth)
+2. **Sequence number prefix**: The FIRST number in `detail_kelurahan_desa` is ALWAYS a sequence number. Strip it to get the actual name.
+   - "6 Lawe Perbunga" → "Lawe Perbunga"
+   - "1 19 Nopember" → "19 Nopember" (actual name starts with number)
+   - "24 2 x 11 Anam Lingkuang" → "2 x 11 Anam Lingkuang"
+3. If keterangan says "X menjadi Y" (from X to Y), verify Y matches CURRENT name in `detail_kelurahan_desa`
+4. If Y ≠ CURRENT name, this keterangan is for a DIFFERENT record - **SKIP this record**
+5. Only generate correction if the OLD name (X) actually exists in POS data for the matching location
+
+**Multi-Level Corrections**:
+- `desa_kelurahan`: Village name changes (most common)
+- `kecamatan`: District boundary changes, village moved to different kecamatan
+- `kabupaten_kota`: Rare - regency splits, village moved to different kabupaten
+
+**OUTPUT FORMAT REQUIREMENTS**:
+- The `reasoning` field must be a brief single-line plain text (NO markdown, NO newlines, NO bullet points, under 200 chars)
+- All string values must be plain text without special formatting
+- Output must be valid JSON that can be parsed directly
 
 Your output must be structured JSON following the exact schema provided."""
 
@@ -77,24 +92,35 @@ def build_examples_context() -> str:
    - References: "surat Bupati Pidie No 140/2364 tanggal 13 April 2021"
    - Confidence: 0.85 (common pattern, well-documented)
 
-4. **Low Confidence - Kecamatan Mismatch**:
-   - Original (POS): "Ara"
-   - Corrected: "Meunasah Ara"
-   - Context: POS kecamatan is "Bandar Baru" vs detail "Kembang Tanjong"
-   - References: "Surat Pem Aceh No. 146.1/10560 tanggal 13 Juni 2016"
-   - Confidence: 0.75 (kecamatan mismatch requires verification)
-   - Flags: ["LOW_CONFIDENCE", "KECAMATAN_MISMATCH"]
-
-5. **Kecamatan-Level Correction**:
+4. **Kecamatan-Level Correction**:
    - Field: "kecamatan" (NOT desa_kelurahan)
    - Original (POS): "Indra Jaya"
    - Corrected: "Indrajaya"
    - Context: Spelling standardization - space removed
-   - References: "1. Surat Pem Aceh No. 146.1/10560 tgl 13 Juni 2016; 2. Surat Bupati Pidie No 140/2364 tgl 13 April 2021; 3. Surat Sesditjen Bina Pemerintahan Desa No 145/2430/BPD tgl 24 Mei 2021"
    - Confidence: 0.90 (well-documented spelling correction)
    - Flags: ["SPELLING_VARIATION"]
 
-**IMPORTANT**: Always check for corrections at ALL administrative levels - kabupaten_kota, kecamatan, AND desa_kelurahan!
+5. **CRITICAL - Verify Keterangan Matches Current Name**:
+   
+   Row A: kelurahan="6 Lawe Perbunga", keterangan="Lawe Sagu Baru menjadi Pangguh"
+   - Current name = "Lawe Perbunga" (strip "6 ")
+   - Keterangan says "→ Pangguh" but "Pangguh" ≠ "Lawe Perbunga"
+   - Result: **SKIP** - this keterangan is for a DIFFERENT record
+   
+   Row B: kelurahan="20 Pangguh", keterangan="Lawe Sagu Baru menjadi Pangguh"
+   - Current name = "Pangguh" (strip "20 ")
+   - Keterangan says "→ Pangguh" = "Pangguh" ✓
+   - Check POS: "Lawe Sagu Baru" exists in matching kecamatan? YES
+   - Result: Generate correction Lawe Sagu Baru → Pangguh
+
+6. **Number Prefix Stripping (Bali Example)**:
+   - detail_kelurahan_desa: "2 Dapdap Putih"
+   - keterangan: "Perubahan nama desa semula Tista menjadi Dapdap Putih"
+   - Current name = "Dapdap Putih" (strip "2 ")
+   - Keterangan says "→ Dapdap Putih" = "Dapdap Putih" ✓
+   - Result: Generate correction Tista → Dapdap Putih (NOT "2 Dapdap Putih")
+
+**IMPORTANT**: Always verify keterangan target matches current column value before generating correction!
 """
 
 
@@ -115,10 +141,10 @@ def build_output_schema() -> dict[str, Any]:
                             "enum": ["desa_kelurahan", "kecamatan", "kabupaten_kota"]
                         },
                         "source": {"type": "string", "const": "POS Data"},
-                        "original_value": {"type": "string"},
-                        "corrected_value": {"type": "string"},
-                        "references": {"type": "string"},
-                        "reasoning": {"type": "string"},
+                        "original_value": {"type": "string", "description": "The OLD name from POS data"},
+                        "corrected_value": {"type": "string", "description": "The CURRENT official name (number prefix stripped)"},
+                        "references": {"type": "string", "description": "Official document references, semicolon-separated"},
+                        "reasoning": {"type": "string", "description": "Brief single-line explanation. NO markdown, NO newlines, under 150 chars. Focus on WHY this correction is valid."},
                         "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                         "flags": {
                             "type": "array",

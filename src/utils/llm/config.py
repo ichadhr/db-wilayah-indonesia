@@ -101,8 +101,8 @@ class LLMConfig(BaseSettings):
         """Resolve paths to absolute paths."""
         path = Path(v)
         if not path.is_absolute():
-            # Resolve relative to project root (3 levels up from src/config/)
-            project_root = Path(__file__).parent.parent.parent
+            # Resolve relative to project root (4 levels up from src/utils/llm/)
+            project_root = Path(__file__).parent.parent.parent.parent
             path = project_root / path
         return path
     
