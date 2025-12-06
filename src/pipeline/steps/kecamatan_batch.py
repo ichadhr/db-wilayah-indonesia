@@ -149,29 +149,31 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
         for result in failed:
             logger.error(f"Failed province {result['province_name']}: {result['error']}")
 
-    # Collect and log unique unmatched ibukota_kabupaten_kota names with their kabupaten_kota
-    all_unmatched = {}  # ibukota -> kabupaten_kota
+    # Collect and log unique unmatched ibukota names from PDF (not found in BSNI)
+    # Format: {(ibukota, kabupaten_kota, province)} for deduplication
+    all_unmatched_pdf = set()
     for result in successful:
+        province_name = result.get('province_name', '')
         unmatched_names = result.get('unmatched_names', [])
         for ibukota, kabupaten_kota in unmatched_names:
-            all_unmatched[ibukota] = kabupaten_kota
+            all_unmatched_pdf.add((ibukota, kabupaten_kota, province_name))
 
-    if all_unmatched:
-        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "unmatched_k_bsni.log")
+    if all_unmatched_pdf:
+        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "k_bsni_mismatch_pdf.log")
 
         # Ensure the log directory exists
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
-        # Write back the complete unique list
+        # Write with unified format: city | kabupaten_kota | province | singkatan
         with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"Batch processing completed - {len(all_unmatched)} unique unmatched ibukota_kabupaten_kota names across all provinces:\n")
-            for name in sorted(all_unmatched.keys()):
-                kabupaten = all_unmatched[name]
-                f.write(f"  - {name} - {kabupaten}\n")
+            f.write(f"BSNI Mismatch - {len(all_unmatched_pdf)} entries from PDF not found in BSNI reference:\n")
+            f.write(f"Format: city | kabupaten_kota | province | singkatan\n\n")
+            for ibukota, kabupaten_kota, province in sorted(all_unmatched_pdf, key=lambda x: (x[2], x[1], x[0])):
+                f.write(f"  - {ibukota} | {kabupaten_kota} | {province} | -\n")
             f.write("\n")
-        logger.info(f"Logged {len(all_unmatched)} unique unmatched ibukota_kabupaten_kota names with kabupaten_kota mapping")
+        logger.info(f"Logged {len(all_unmatched_pdf)} PDF entries not found in BSNI to k_bsni_mismatch_pdf.log")
 
-    # Collect and log unmapped BSNI cities (BSNI entries not referenced by any district)
+    # Collect and log unmapped BSNI cities (BSNI entries not referenced by any PDF district)
     all_unmapped_bsni = {}  # singkatan -> {nama_kota, kabupaten_kota, provinsi}
     for result in successful:
         unmapped_bsni = result.get('unmapped_bsni', [])
@@ -181,19 +183,23 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
                 all_unmapped_bsni[singkatan] = entry
 
     if all_unmapped_bsni:
-        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "unmapped_bsni_cities.log")
+        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "k_bsni_mismatch_ocr.log")
 
         # Ensure the log directory exists
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
-        # Write unmapped BSNI cities
+        # Write with unified format: city | kabupaten_kota | province | singkatan
         with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"Batch processing completed - {len(all_unmapped_bsni)} BSNI cities not referenced by any district:\n")
+            f.write(f"BSNI Mismatch - {len(all_unmapped_bsni)} BSNI entries not referenced by any PDF district:\n")
+            f.write(f"Format: city | kabupaten_kota | province | singkatan\n\n")
             for singkatan in sorted(all_unmapped_bsni.keys()):
                 entry = all_unmapped_bsni[singkatan]
-                f.write(f"  - {singkatan}: {entry.get('nama_kota', '')} ({entry.get('kabupaten_kota', '')}, {entry.get('provinsi', '')})\n")
+                nama_kota = entry.get('nama_kota', '')
+                kabupaten_kota = entry.get('kabupaten_kota', '')
+                provinsi = entry.get('provinsi', '')
+                f.write(f"  - {nama_kota} | {kabupaten_kota} | {provinsi} | {singkatan}\n")
             f.write("\n")
-        logger.info(f"Logged {len(all_unmapped_bsni)} unmapped BSNI cities")
+        logger.info(f"Logged {len(all_unmapped_bsni)} BSNI entries not referenced by PDF to k_bsni_mismatch_ocr.log")
 
     return type('Result', (), {
         'success': len(failed) == 0,

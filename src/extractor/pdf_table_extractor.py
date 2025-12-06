@@ -316,14 +316,39 @@ class PDFTableExtractor(PDFTableExtractorBase):
             for row in unmatched.iter_rows(named=True):
                 unmatched_provinces.append(row["provinsi"])
 
-            # Log unmatched provinces
+            # Log unmatched provinces (PDF entries not in BSNI)
             if unmatched_provinces:
-                log_path = os.path.join(os.path.dirname(__file__), "..", "output", "log", "unmatched_p_bsni.log")
+                log_path = os.path.join(os.path.dirname(__file__), "..", "output", "log", "p_bsni_mismatch_pdf.log")
                 os.makedirs(os.path.dirname(log_path), exist_ok=True)
                 with open(log_path, 'a', encoding='utf-8') as f:
-                    f.write(f"Extraction run at {os.path.basename(__file__)} - {len(unmatched_provinces)} unmatched province names:\n")
+                    f.write(f"Province extraction - {len(unmatched_provinces)} provinces from PDF not found in BSNI:\n")
+                    f.write(f"Format: province\n\n")
                     for name in unmatched_provinces:
                         f.write(f"  - {name}\n")
+                    f.write("\n")
+
+            # Log unmapped BSNI provinces (BSNI entries not referenced by PDF)
+            # Get unique provinces from PDF
+            pdf_provinces = set(provinces_with_name.select("provinsi").to_series().to_list())
+            
+            # Get unique provinces from BSNI
+            bsni_provinces_df = df_kode_wilayah.select("provinsi", "parent_subdivision").unique()
+            bsni_provinces = set(bsni_provinces_df.select("provinsi").to_series().to_list())
+            
+            # Find BSNI provinces not in PDF
+            unmapped_bsni_provinces = bsni_provinces - pdf_provinces
+            
+            if unmapped_bsni_provinces:
+                log_path = os.path.join(os.path.dirname(__file__), "..", "output", "log", "p_bsni_mismatch_ocr.log")
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"Province extraction - {len(unmapped_bsni_provinces)} BSNI provinces not referenced by PDF:\n")
+                    f.write(f"Format: province | singkatan\n\n")
+                    # Get singkatan for each unmapped province
+                    for prov in sorted(unmapped_bsni_provinces):
+                        singkatan_row = bsni_provinces_df.filter(pl.col("provinsi") == prov)
+                        singkatan = singkatan_row.select("parent_subdivision").to_series()[0] if len(singkatan_row) > 0 else "-"
+                        f.write(f"  - {prov} | {singkatan}\n")
                     f.write("\n")
 
             # Update the original dataframe with matched p_bsni values
