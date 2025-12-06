@@ -10,6 +10,7 @@ dependencies = [
     "img2pdf>=0.6.1",
     "litellm>=1.80.0",
     "marker-pdf[full]>=1.9.3",
+    "mcp[cli]>=1.23.1",
     "notebook>=7.4.7",
     "pdfplumber>=0.11.7",
     "polars>=1.33.1",
