@@ -53,6 +53,20 @@ Detail record columns:
 3. If keterangan says "X menjadi Y" (from X to Y), verify Y matches CURRENT name in `detail_kelurahan_desa`
 4. If Y ≠ CURRENT name, this keterangan is for a DIFFERENT record - **SKIP this record**
 5. Only generate correction if the OLD name (X) actually exists in POS data for the matching location
+6. **NO-OP Check**: If the corrected value is identical to the original value (case-insensitive), DO NOT generate a correction entry.
+
+**MULTIPLE CORRECTIONS PER RECORD - IMPORTANT**:
+Administrative changes can affect multiple hierarchy levels simultaneously. When a single detail record describes a complex change (like village relocation), you MAY generate multiple corrections for different fields (desa_kelurahan, kecamatan, kabupaten_kota) if:
+- All corrections reference the SAME administrative change event
+- Each correction has independent justification
+- The changes are logically connected (e.g., village relocation implies kecamatan change)
+- Each correction cites specific aspects of the reference documents
+
+**Example of Valid Multiple Corrections (Aceh Case)**:
+Detail record: kecamatan="Indrajaya", kelurahan_desa="Peutoe", keterangan="Surat Pem Aceh No. 146.1/10560..."
+- Correction 1: kecamatan "Indra Jaya" → "Indrajaya" (spelling correction)
+- Correction 2: desa_kelurahan "Putoe Gapui" → "Peutoe" (official name change)
+Both corrections justified by same official decree documents.
 
 **Multi-Level Corrections**:
 - `desa_kelurahan`: Village name changes (most common)
@@ -228,7 +242,7 @@ def build_user_prompt(
 
     prompt = f"""**Province**: {province.replace('_', ' ').title()}
 
-**Task**: Analyze the following unmapped records and identify corrections where POS data names need to be updated to match official government records.
+**Task**: Analyze the following unmapped records and identify corrections where POS data names need to be updated to match official government records. A single record may generate MULTIPLE corrections when administrative changes affect multiple hierarchy levels.
 
 {detail_table}
 
@@ -246,17 +260,24 @@ def build_user_prompt(
 
 4. Extract official references from `detail_keterangan` (Surat, Qanun, Keputusan)
 
-5. Assign confidence scores:
+5. **MULTIPLE CORRECTIONS**: When a single administrative change affects multiple levels, generate separate corrections for each affected field. Each correction must be independently justified.
+
+6. Assign confidence scores:
    - 0.90-1.0: Explicit name change with clear documentation
    - 0.80-0.89: Strong pattern match with documentation
    - 0.70-0.79: Reasonable match but needs verification
    - Below 0.70: Do not include (too uncertain)
    
-6. Flag low-confidence matches and special cases (kecamatan mismatches, etc.)
+7. Flag low-confidence matches and special cases (kecamatan mismatches, etc.)
 
-**CRITICAL**: Do NOT only focus on desa_kelurahan corrections. Check kecamatan and kabupaten_kota fields too!
+**CRITICAL**: Do NOT only focus on desa_kelurahan corrections. Check kecamatan and kabupaten_kota fields too! Administrative relocations may require corrections at multiple levels.
 
-**Output**: Return a JSON object with array of corrections following the exact schema."""
+**VALID MULTIPLE CORRECTIONS EXAMPLE**:
+Record has changes in both kecamatan spelling and village name:
+- Correction 1: kecamatan "Indra Jaya" → "Indrajaya"
+- Correction 2: desa_kelurahan "Putoe Gapui" → "Peutoe"
+
+**Output**: Return a JSON object with array of corrections following the exact schema. Multiple corrections per record are allowed when justified by the same administrative change."""
 
     # Enhance prompt with kecamatan hints if available
     enhanced_prompt = enhance_llm_prompt_with_kecamatan_hints(prompt, unmapped_detail)

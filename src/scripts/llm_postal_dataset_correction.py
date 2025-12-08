@@ -94,6 +94,13 @@ class PostalCorrectionGenerator:
             if not all(key in correction for key in ["confidence", "flags"]):
                 print(f"Warning: Skipping invalid correction: {correction.get('original_value', 'unknown')}")
                 continue
+
+            # Filter out redundant corrections (no change)
+            original = str(correction.get("original_value", "")).strip()
+            corrected = str(correction.get("corrected_value", "")).strip()
+            if original and corrected and original.lower() == corrected.lower():
+                print(f"Skipping redundant correction (values identical): {original} -> {corrected}")
+                continue
             
             # Add LOW_CONFIDENCE flag if below threshold
             confidence = correction.get("confidence", 0.0)
@@ -241,22 +248,25 @@ def main():
     parser.add_argument('--output-dir', type=str, help='Output directory for markdown/JSON (overrides config)')
     parser.add_argument('--dry-run', action='store_true', help='Test without calling LLM or saving outputs')
     parser.add_argument('--list-provinces', action='store_true', help='List available provinces and exit')
-    
+
     args = parser.parse_args()
-    
+
+    # Determine project root for path resolution
+    project_root = Path(__file__).parent.parent.parent
+
     try:
         # Load configuration
         print("Loading LLM configuration...")
         config = load_config(dry_run=args.dry_run)
         print(f"[OK] Provider: {config.llm_provider}")
         print(f"[OK] Model: {config.llm_model}")
-        
-        # Override config with CLI args
+
+        # Override config with CLI args, resolving paths relative to project root
         if args.log_dir:
-            config.output_log_dir = Path(args.log_dir)
+            config.output_log_dir = project_root / args.log_dir
         if args.output_dir:
-            config.output_markdown_dir = Path(args.output_dir)
-            config.output_json_dir = Path(args.output_dir)
+            config.output_markdown_dir = project_root / args.output_dir
+            config.output_json_dir = project_root / args.output_dir
         
         # List provinces if requested
         if args.list_provinces:
