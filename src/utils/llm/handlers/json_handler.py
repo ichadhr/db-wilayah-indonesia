@@ -14,7 +14,7 @@ from typing import Any
 def validate_correction(correction: dict[str, Any]) -> bool:
     """Validate that a correction dict has all required fields."""
     required_fields = [
-        "province", "regency_city", "field", "source",
+        "province", "regency_city", "district", "field", "source",
         "original_value", "corrected_value", "references",
         "reasoning", "confidence", "flags"
     ]
@@ -159,7 +159,7 @@ def export_corrections_to_csv(
 
     # Reorder columns for readability
     column_order = [
-        "id", "province", "regency_city", "field", "source",
+        "id", "province", "regency_city", "district", "field", "source",
         "original_value", "corrected_value", "confidence",
         "flags", "reasoning", "references"
     ]

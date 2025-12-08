@@ -34,11 +34,11 @@ def generate_corrections_table(corrections: list[dict[str, Any]]) -> str:
     """Generate markdown table for corrections."""
     if not corrections:
         return "*No corrections identified.*\n"
-    
-    table_header = """| No | Province | Regency/City | Field | Source | Original Value | Corrected Value | References |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+
+    table_header = """| No | Province | Regency/City | District | Field | Source | Original Value | Corrected Value | References |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 """
-    
+
     rows = []
     for idx, correction in enumerate(corrections, start=1):
         # Format references with confidence flag
@@ -47,24 +47,25 @@ def generate_corrections_table(corrections: list[dict[str, Any]]) -> str:
             correction.get("flags", []),
             correction.get("references", "")
         )
-        
+
         # Add note for special cases in references
         if "KECAMATAN_MISMATCH" in correction.get("flags", []):
             if "note:" not in references.lower():
                 references += f" (Note: {correction.get('reasoning', 'Kecamatan mismatch detected')})"
-        
+
         row = (
             f"| {idx} "
             f"| {escape_markdown(correction.get('province', ''))} "
             f"| {escape_markdown(correction.get('regency_city', ''))} "
+            f"| {escape_markdown(correction.get('district', ''))} "
             f"| {escape_markdown(correction.get('field', ''))} "
-            f"| {escape_markdown(correction.get('source', 'POS Data'))} " 
+            f"| {escape_markdown(correction.get('source', 'POS Data'))} "
             f"| {escape_markdown(correction.get('original_value', ''))} "
             f"| {escape_markdown(correction.get('corrected_value', ''))} "
             f"| {escape_markdown(references)} |"
         )
         rows.append(row)
-    
+
     return table_header + "\n".join(rows) + "\n"
 
 
@@ -178,7 +179,7 @@ This document tracks corrections applied to POS (Pos Indonesia) data for {provin
         # Build set of corrected values per field type
         # IMPORTANT: Normalize the corrected_value to strip number prefix
         corrected_kelurahan = {
-            (c.get('province', ''), c.get('regency_city', ''), normalize_name(c.get('corrected_value', '')))
+            (c.get('province', ''), c.get('regency_city', ''), c.get('district', ''), normalize_name(c.get('corrected_value', '')))
             for c in corrections if c.get('field') == 'desa_kelurahan'
         }
         corrected_kecamatan = {
@@ -202,7 +203,7 @@ This document tracks corrections applied to POS (Pos Indonesia) data for {provin
 
                 # Check if this detail record's name matches any corrected value
                 return (
-                    (prov, reg, kel) in corrected_kelurahan or
+                    (prov, reg, kec, kel) in corrected_kelurahan or
                     (prov, reg, kec) in corrected_kecamatan or
                     (prov, reg) in corrected_kabupaten
                 )

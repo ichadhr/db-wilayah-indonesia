@@ -19,6 +19,8 @@ Usage:
 """
 
 import argparse
+import difflib
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -122,7 +124,104 @@ class PostalCorrectionGenerator:
             validated.append(correction)
         
         return validated
-    
+
+    def populate_fields_from_pos(self, corrections: list[dict[str, Any]], unmapped_pos: pl.DataFrame, unmapped_detail: pl.DataFrame) -> list[dict[str, Any]]:
+        """
+        Populate province, regency_city, and district fields from POS data.
+        Includes hierarchical validation to ensure district consistency.
+
+        Args:
+            corrections: List of corrections from LLM
+            unmapped_pos: POS dataframe
+            unmapped_detail: Detail dataframe for validation
+
+        Returns:
+            Corrections with fields populated from POS data, filtered for hierarchical consistency
+        """
+        populated = []
+
+        for correction in corrections:
+            field = correction.get("field")
+            original_value = correction.get("original_value", "").strip()
+
+            if not field or not original_value:
+                print(f"Warning: Skipping correction with missing field or original_value: {correction}")
+                continue
+
+            # Map field to POS column
+            field_to_pos_column = {
+                "desa_kelurahan": "desa_kelurahan",
+                "kecamatan": "kecamatan",
+                "kabupaten_kota": "kabupaten_kota"
+            }
+
+            pos_column = field_to_pos_column.get(field)
+            if not pos_column:
+                print(f"Warning: Unknown field '{field}', skipping: {correction}")
+                continue
+
+            # Find matching POS records
+            matching_pos = unmapped_pos.filter(pl.col(pos_column).str.strip_chars().str.to_lowercase() == original_value.lower())
+
+            if len(matching_pos) == 0:
+                print(f"Warning: No matching POS record found for {field}='{original_value}', skipping: {correction}")
+                continue
+            elif len(matching_pos) > 1:
+                print(f"Warning: Multiple matching POS records found for {field}='{original_value}', using first one")
+
+            # Take the first matching record
+            pos_record = matching_pos.head(1)
+
+            # Populate fields from POS
+            correction["province"] = pos_record.select("provinsi").to_series().to_list()[0]
+            correction["regency_city"] = pos_record.select("kabupaten_kota").to_series().to_list()[0]
+            pos_district = pos_record.select("kecamatan").to_series().to_list()[0]
+            correction["district"] = pos_district
+
+            populated.append(correction)
+
+        return populated
+
+    def validate_hierarchical_consistency(self, corrections: list[dict[str, Any]], detail_df: pl.DataFrame) -> list[dict[str, Any]]:
+        """
+        Validate hierarchical consistency between POS and detail data.
+
+        For desa_kelurahan corrections: Allow if district mismatch is minor spelling variation (similarity >= 0.95), flag as 'DISTRICT_SPELLING_VARIATION'.
+        For kecamatan corrections: Include (allows spelling variations not in keterangan).
+        """
+        validated = []
+        for correction in corrections:
+            if correction['field'] == 'desa_kelurahan':
+                # Check district consistency for desa corrections
+                corrected_normalized = str(correction.get("corrected_value", "")).strip()
+                # Remove leading numbers (e.g., "6 Lawe" -> "Lawe")
+                corrected_normalized = re.sub(r'^\d+\s+', '', corrected_normalized)
+
+                detail_match = detail_df.filter(
+                    pl.col('detail_kelurahan_desa').str.strip_chars().str.replace(r'^\d+\s+', '', literal=False) == corrected_normalized
+                )
+                if len(detail_match) > 0:
+                    official_district = detail_match.select("detail_kecamatan").to_series().to_list()[0]
+                    pos_district = correction['district']
+                    if pos_district != official_district:
+                        # Normalize by removing spaces for better similarity calculation
+                        official_district_norm = re.sub(r'\s+', '', official_district.lower())
+                        pos_district_norm = re.sub(r'\s+', '', pos_district.lower())
+                        similarity = difflib.SequenceMatcher(None, official_district_norm, pos_district_norm).ratio()
+                        if similarity >= 0.95:
+                            flags = correction.get("flags", [])
+                            flags.append("DISTRICT_SPELLING_VARIATION")
+                            correction["flags"] = flags
+                            print(f"Allowing desa correction with district spelling variation: {correction['original_value']} -> {correction.get('corrected_value')} "
+                                  f"(POS district: '{pos_district}' vs Detail district: '{official_district}', similarity: {similarity:.2f})")
+                        else:
+                            print(f"Excluding desa correction: district mismatch for {correction['original_value']} -> {correction.get('corrected_value')} "
+                                  f"(POS district: '{pos_district}' vs Detail district: '{official_district}', similarity: {similarity:.2f})")
+                            continue
+
+            validated.append(correction)
+        return validated
+
     def generate_corrections(self, province: str, dry_run: bool = False) -> dict[str, Any]:
         """
         Generate corrections for a province.
@@ -168,6 +267,12 @@ class PostalCorrectionGenerator:
             
             validated_corrections = self.validate_and_flag_corrections(raw_corrections)
             print(f"After validation: {len(validated_corrections)} corrections")
+
+            # Populate province, regency_city, district from POS data
+            validated_corrections = self.populate_fields_from_pos(validated_corrections, unmapped_pos, unmapped_detail)
+            # Apply hierarchical validation
+            validated_corrections = self.validate_hierarchical_consistency(validated_corrections, unmapped_detail)
+            print(f"After populating fields from POS and hierarchical validation: {len(validated_corrections)} corrections")
             
             # Categorize by confidence
             high_conf = [c for c in validated_corrections if c.get("confidence", 0) >= self.config.confidence_threshold_auto_apply]

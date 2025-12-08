@@ -162,8 +162,13 @@ class LLMConfig(BaseSettings):
     
     def get_litellm_params(self) -> dict:
         """Get parameters for LiteLLM API call."""
+        # Use model name only for OpenAI with custom base URL, otherwise use provider/model format
+        if self.llm_base_url and self.llm_provider == "openai":
+            model_param = self.llm_model
+        else:
+            model_param = f"{self.llm_provider}/{self.llm_model}"
         params = {
-            "model": f"{self.llm_provider}/{self.llm_model}",
+            "model": model_param,
             "temperature": self.llm_temperature,
         }
 
@@ -179,6 +184,9 @@ class LLMConfig(BaseSettings):
         # Add base URL for local/custom endpoints
         if self.llm_base_url:
             params["api_base"] = self.llm_base_url
+            # Force OpenAI provider when using custom base URL to avoid model name-based routing
+            if self.llm_provider == "openai":
+                params["custom_llm_provider"] = "openai"
         
         # Add Azure-specific parameters
         if self.llm_provider == "azure":

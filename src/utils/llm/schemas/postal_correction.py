@@ -44,18 +44,26 @@ Detail record columns:
 - `detail_keterangan`: Historical context - may reference OTHER records, do NOT assume applies to THIS row
 - `potential_kecamatan_matches`: High-similarity kecamatan from POS data
 
-**CRITICAL RULES**:
-1. Column values = CURRENT official names (authoritative source of truth)
-2. **Sequence number prefix**: The FIRST number in `detail_kelurahan_desa` is ALWAYS a sequence number. Strip it to get the actual name.
-   - "6 Lawe Perbunga" → "Lawe Perbunga"
-   - "1 19 Nopember" → "19 Nopember" (actual name starts with number)
-   - "24 2 x 11 Anam Lingkuang" → "2 x 11 Anam Lingkuang"
-3. If keterangan says "X menjadi Y" (from X to Y), verify Y matches CURRENT name in `detail_kelurahan_desa`
-4. If Y ≠ CURRENT name, this keterangan is for a DIFFERENT record - **SKIP this record**
-5. Only generate correction if the OLD name (X) actually exists in POS data for the matching location
-6. **NO-OP Check**: If the corrected value is identical to the original value (case-insensitive), DO NOT generate a correction entry.
+POS record columns:
+- `provinsi`, `kabupaten_kota`, `kecamatan`: Administrative hierarchy from POS data (use these for province, regency_city, district fields in corrections)
+- `desa_kelurahan`: Village name from POS data
+- `kodepos`: Postal code
 
-**MULTIPLE CORRECTIONS PER RECORD - IMPORTANT**:
+**CRITICAL RULES & CONSTRAINTS**:
+1. **Source of Truth**: Column values represent CURRENT official names.
+2. **Sequence Numbers**: ALWAYS strip identifying number prefixes (e.g., "6 Lawe" -> "Lawe").
+3. **Target Verification**: If 'keterangan' says "X to Y", Y MUST match the current 'detail' value. If not, SKIP the record.
+4. **Existence Check**: Only correct if the old name (X) actually exists in the POS data.
+5. **NO-OP Check**: If Corrected Value == Original Value (case-insensitive), DO NOT generate a record.
+6. **Evidence Requirement**: Do NOT infer changes. Only correct if 'detail_keterangan' or official documents explicitly support it.
+7. **Explicit Reference Constraint**: You only generate corrections when the `detail_keterangan` field explicitly mentions or references the specific change relevant to the current row's `detail_kelurahan_desa` or other target fields. If the keterangan does not mention the row's values (e.g., does not reference "Lawe Perbunga" in the text), you must skip generating corrections for that row.
+
+**WHAT NOT TO DO (Negative Constraints)**:
+- Do NOT correct spelling differences unless explicitly documented.
+- Do NOT assume a record applies to this row if the target name doesn't match.
+- Do NOT include "administrative change" as a flag without a specific decree/surat reference.
+
+**MULTIPLE CORRECTIONS PER RECORD**:
 Administrative changes can affect multiple hierarchy levels simultaneously. When a single detail record describes a complex change (like village relocation), you MAY generate multiple corrections for different fields (desa_kelurahan, kecamatan, kabupaten_kota) if:
 - All corrections reference the SAME administrative change event
 - Each correction has independent justification
@@ -68,15 +76,10 @@ Detail record: kecamatan="Indrajaya", kelurahan_desa="Peutoe", keterangan="Surat
 - Correction 2: desa_kelurahan "Putoe Gapui" → "Peutoe" (official name change)
 Both corrections justified by same official decree documents.
 
-**Multi-Level Corrections**:
-- `desa_kelurahan`: Village name changes (most common)
-- `kecamatan`: District boundary changes, village moved to different kecamatan
-- `kabupaten_kota`: Rare - regency splits, village moved to different kabupaten
-
-**OUTPUT FORMAT REQUIREMENTS**:
-- The `reasoning` field must be a brief single-line plain text (NO markdown, NO newlines, NO bullet points, under 200 chars)
-- All string values must be plain text without special formatting
-- Output must be valid JSON that can be parsed directly
+**Output Format Requirements**:
+- **Reasoning**: Must be EVIDENCE-BASED. State the specific change type (relocation/renaming) and the document type.
+- **References**: Join multiple sources with semicolons (;).
+- **JSON**: Valid, parseable JSON only.
 
 Your output must be structured JSON following the exact schema provided."""
 
@@ -150,6 +153,7 @@ def build_output_schema() -> dict[str, Any]:
                     "properties": {
                         "province": {"type": "string"},
                         "regency_city": {"type": "string"},
+                        "district": {"type": "string"},
                         "field": {
                             "type": "string",
                             "enum": ["desa_kelurahan", "kecamatan", "kabupaten_kota"]
@@ -158,7 +162,7 @@ def build_output_schema() -> dict[str, Any]:
                         "original_value": {"type": "string", "description": "The OLD name from POS data"},
                         "corrected_value": {"type": "string", "description": "The CURRENT official name (number prefix stripped)"},
                         "references": {"type": "string", "description": "Official document references, semicolon-separated"},
-                        "reasoning": {"type": "string", "description": "Brief single-line explanation. NO markdown, NO newlines, under 150 chars. Focus on WHY this correction is valid."},
+                        "reasoning": {"type": "string", "description": "EVIDENCE-BASED explanation. Must explicitly state the type of change (e.g., 'Renaming', 'Relocation', 'Spelling Fix') and cite the 'keterangan' evidence. Format: '[Type] [Explanation]'. Max 150 chars."},
                         "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                         "flags": {
                             "type": "array",
@@ -175,7 +179,7 @@ def build_output_schema() -> dict[str, Any]:
                         }
                     },
                     "required": [
-                        "province", "regency_city", "field", "source",
+                        "province", "regency_city", "district", "field", "source",
                         "original_value", "corrected_value", "references",
                         "reasoning", "confidence", "flags"
                     ]
@@ -249,26 +253,33 @@ def build_user_prompt(
 {pos_table}
 
 **Instructions**:
-1. **SYSTEMATICALLY CHECK ALL ADMINISTRATIVE LEVELS**:
-   - Kabupaten/Kota inconsistencies (field: "kabupaten_kota")
-   - Kecamatan inconsistencies (field: "kecamatan")
-   - Kelurahan/Desa inconsistencies (field: "desa_kelurahan")
-   
-2. Look for matches between Detail and POS records based on `detail_keterangan` clues
+1. **HIERARCHY CHECK**: systematically evaluate Kabupaten -> Kecamatan -> Desa/Kelurahan.
 
-3. Apply gate system rules (but override kecamatan gate if keterangan indicates relocation)
+2. **MATCHING LOGIC**:
+    - Use `detail_keterangan` as the primary key for matching.
+    - Override fuzzy similarity gates IF 'keterangan' explicitly describes a relocation/change.
 
-4. Extract official references from `detail_keterangan` (Surat, Qanun, Keputusan)
+3. **VALIDATION**:
+    - Verify that the administrative change described actually applies to THIS specific row (target name check).
 
-5. **MULTIPLE CORRECTIONS**: When a single administrative change affects multiple levels, generate separate corrections for each affected field. Each correction must be independently justified.
+4. **MULTIPLE CORRECTIONS**:
+    - When a single administrative change affects multiple levels, generate separate corrections for each affected field.
+    - Each correction must be independently justified.
 
-6. Assign confidence scores:
-   - 0.90-1.0: Explicit name change with clear documentation
-   - 0.80-0.89: Strong pattern match with documentation
-   - 0.70-0.79: Reasonable match but needs verification
-   - Below 0.70: Do not include (too uncertain)
-   
-7. Flag low-confidence matches and special cases (kecamatan mismatches, etc.)
+5. **FIELD POPULATION FROM POS DATA**:
+    - Set `province` to the corresponding POS record's `provinsi`
+    - Set `regency_city` to the corresponding POS record's `kabupaten_kota`
+    - Set `district` to the corresponding POS record's `kecamatan`
+    - These fields must come from POS data, not detail data.
+
+6. **CONFIDENCE SCORING**:
+    - 0.9-1.0: Explicit Change (e.g., "X menjadi Y" with matching Decree).
+    - 0.8-0.9: Standardized Pattern (e.g., Prefix addition "Meunasah X").
+    - < 0.7: SKIP.
+
+7. **OUTPUT**:
+    - Return valid JSON array.
+    - NO markdown fencing around the JSON.
 
 **CRITICAL**: Do NOT only focus on desa_kelurahan corrections. Check kecamatan and kabupaten_kota fields too! Administrative relocations may require corrections at multiple levels.
 
