@@ -125,12 +125,26 @@ class PostalCorrectionGenerator:
         
         return validated
 
-    def populate_fields_from_pos(self, corrections: list[dict[str, Any]], unmapped_pos: pl.DataFrame, unmapped_detail: pl.DataFrame) -> list[dict[str, Any]]:
+    def populate_fields_from_pos(self, corrections: list[dict[str, Any]], unmapped_pos: pl.DataFrame, unmapped_detail: pl.DataFrame) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
-        Populate province, regency_city, and district fields from POS data using hierarchical filtering.
-        Requires that corrections must have hierarchical fields (province, regency_city, district) populated before attempting POS matching.
-        If any hierarchical field is missing, skip the correction entirely. This ensures all corrections use the full hierarchical context
-        for unique POS record identification, eliminating any fallback to single-field matching.
+        Populate province, regency_city, and district fields from POS data.
+        Uses HYBRID matching approach: single-field first, hierarchical only for disambiguation.
+        Returns (populated_corrections, skipped_corrections) tuple.
+
+        IMPORTANT: This method implements a hybrid matching strategy to handle LLM inconsistencies:
+
+        1. PRIMARY MATCHING: Single-field matching (field value only)
+           - Works even if LLM hierarchical fields are wrong/missing
+           - Maintains high success rate
+
+        2. DISAMBIGUATION: Hierarchical matching (when multiple single-field matches exist)
+           - Uses LLM-populated province/regency_city/district to select correct record
+           - Only applied when needed (multiple matches)
+
+        3. FALLBACK: Clear error handling with specific skip reasons
+
+        This approach solves the LLM consistency problem where hierarchical fields may be
+        incorrect, while still leveraging them for disambiguation when available.
 
         Args:
             corrections: List of corrections from LLM
@@ -138,21 +152,21 @@ class PostalCorrectionGenerator:
             unmapped_detail: Detail dataframe for validation
 
         Returns:
-            Corrections with fields populated from POS data, filtered for unique hierarchical matches
+            Tuple of (populated_corrections, skipped_corrections)
+            - populated: Corrections with fields populated from POS data
+            - skipped: Corrections that failed matching with skip_reason
         """
         populated = []
+        skipped = []
 
         for correction in corrections:
             field = correction.get("field")
             original_value = correction.get("original_value", "").strip()
 
             if not field or not original_value:
-                print(f"Warning: Skipping correction with missing field or original_value: {correction}")
-                continue
-
-            # Require all hierarchical fields to be populated before attempting POS matching
-            if not all(correction.get(key, "").strip() for key in ["province", "regency_city", "district"]):
-                print(f"Warning: Skipping correction due to missing hierarchical fields (province, regency_city, district): {correction}")
+                print(f"[SKIP] Missing field or original_value: {correction}")
+                correction["skip_reason"] = "missing_field_or_value"
+                skipped.append(correction)
                 continue
 
             # Map field to POS column
@@ -165,55 +179,90 @@ class PostalCorrectionGenerator:
             pos_column = field_to_pos_column.get(field)
             if not pos_column:
                 print(f"Warning: Unknown field '{field}', skipping: {correction}")
+                correction["skip_reason"] = "unknown_field"
+                skipped.append(correction)
                 continue
 
-            # Start with all POS records and apply hierarchical filtering
-            filtered_pos = unmapped_pos
-
-            # Filter by province (now required)
-            correction_province = correction.get("province", "").strip()
-            filtered_pos = filtered_pos.filter(
-                pl.col("provinsi").str.strip_chars().str.to_lowercase() == correction_province.lower()
-            )
-
-            # Filter by regency_city (now required)
-            correction_regency_city = correction.get("regency_city", "").strip()
-            filtered_pos = filtered_pos.filter(
-                pl.col("kabupaten_kota").str.strip_chars().str.to_lowercase() == correction_regency_city.lower()
-            )
-
-            # Filter by district (now required)
-            correction_district = correction.get("district", "").strip()
-            filtered_pos = filtered_pos.filter(
-                pl.col("kecamatan").str.strip_chars().str.to_lowercase() == correction_district.lower()
-            )
-
-            # Finally, filter by the specific field being corrected
-            matching_pos = filtered_pos.filter(
+            # STEP 1: Try single-field matching first (primary approach)
+            single_field_filter = (
                 pl.col(pos_column).str.strip_chars().str.to_lowercase() == original_value.lower()
             )
+            single_field_matches = unmapped_pos.filter(single_field_filter)
 
-            if len(matching_pos) == 0:
-                print(f"Warning: No matching POS record found after hierarchical filtering for {field}='{original_value}' "
-                      f"(province='{correction_province}', regency_city='{correction_regency_city}', district='{correction_district}'), skipping: {correction}")
-                continue
-            elif len(matching_pos) > 1:
-                print(f"Warning: Multiple matching POS records found after hierarchical filtering for {field}='{original_value}' "
-                      f"(province='{correction_province}', regency_city='{correction_regency_city}', district='{correction_district}'), "
-                      f"skipping to prevent incorrect hierarchical field population: {correction}")
+            if len(single_field_matches) == 0:
+                # No matches at all - skip
+                print(f"[SKIP] No POS records found for {field}='{original_value}'")
+                correction["skip_reason"] = "single_field_no_matches"
+                skipped.append(correction)
                 continue
 
-            # Exactly one match - use it
-            pos_record = matching_pos
+            elif len(single_field_matches) == 1:
+                # Perfect single match - use it
+                pos_record = single_field_matches.head(1)
 
-            # Populate/verify fields from POS (should match correction data after filtering)
+            else:
+                # Multiple matches - try hierarchical disambiguation
+                print(f"[INFO] Multiple matches for {field}='{original_value}' ({len(single_field_matches)}), attempting hierarchical disambiguation")
+
+                # Check if we have hierarchical fields for disambiguation
+                if not all(key in correction for key in ["province", "regency_city", "district"]):
+                    print(f"[SKIP] Multiple matches but missing hierarchical fields for disambiguation: {field}='{original_value}'")
+                    correction["skip_reason"] = "multiple_matches_no_hierarchy"
+                    skipped.append(correction)
+                    continue
+
+                # Build hierarchical filter for disambiguation
+                hierarchical_filter = (
+                    pl.col("provinsi").str.strip_chars().str.to_lowercase() == correction["province"].strip().lower()
+                ) & (
+                    pl.col("kabupaten_kota").str.strip_chars().str.to_lowercase() == correction["regency_city"].strip().lower()
+                ) & (
+                    pl.col("kecamatan").str.strip_chars().str.to_lowercase() == correction["district"].strip().lower()
+                )
+
+                disambiguated_matches = single_field_matches.filter(hierarchical_filter)
+
+                if len(disambiguated_matches) == 1:
+                    # Success! Hierarchical disambiguation worked
+                    pos_record = disambiguated_matches.head(1)
+                    print(f"[OK] Hierarchical disambiguation successful for {field}='{original_value}'")
+                    correction["flags"] = correction.get("flags", []) + ["HIERARCHICAL_DISAMBIGUATION_USED"]
+
+                elif len(disambiguated_matches) == 0:
+                    # Hierarchical disambiguation failed - LLM fields likely wrong
+                    print(f"[SKIP] Hierarchical disambiguation failed for {field}='{original_value}' - LLM hierarchy may be incorrect")
+                    correction["skip_reason"] = "hierarchical_disambiguation_failed"
+                    skipped.append(correction)
+                    continue
+
+                else:
+                    # Multiple matches even after disambiguation - shouldn't happen
+                    print(f"[SKIP] Multiple matches even after hierarchical disambiguation for {field}='{original_value}'")
+                    correction["skip_reason"] = "multiple_hierarchical_matches"
+                    skipped.append(correction)
+                    continue
+
+            # Populate fields from the selected POS record
             correction["province"] = pos_record.select("provinsi").to_series().to_list()[0]
             correction["regency_city"] = pos_record.select("kabupaten_kota").to_series().to_list()[0]
             correction["district"] = pos_record.select("kecamatan").to_series().to_list()[0]
 
             populated.append(correction)
 
-        return populated
+        # Remove duplicates based on key fields
+        seen = set()
+        unique_populated = []
+        for correction in populated:
+            key = (
+                correction.get("field"),
+                correction.get("original_value", "").strip().lower(),
+                correction.get("corrected_value", "").strip().lower()
+            )
+            if key not in seen:
+                seen.add(key)
+                unique_populated.append(correction)
+
+        return unique_populated, skipped
 
     def validate_hierarchical_consistency(self, corrections: list[dict[str, Any]], detail_df: pl.DataFrame) -> list[dict[str, Any]]:
         """
@@ -302,10 +351,11 @@ class PostalCorrectionGenerator:
             print(f"After validation: {len(validated_corrections)} corrections")
 
             # Populate province, regency_city, district from POS data
-            validated_corrections = self.populate_fields_from_pos(validated_corrections, unmapped_pos, unmapped_detail)
+            validated_corrections, skipped_corrections = self.populate_fields_from_pos(validated_corrections, unmapped_pos, unmapped_detail)
             # Apply hierarchical validation
             validated_corrections = self.validate_hierarchical_consistency(validated_corrections, unmapped_detail)
             print(f"After populating fields from POS and hierarchical validation: {len(validated_corrections)} corrections")
+            print(f"Skipped corrections: {len(skipped_corrections)}")
             
             # Categorize by confidence
             high_conf = [c for c in validated_corrections if c.get("confidence", 0) >= self.config.confidence_threshold_auto_apply]
@@ -327,7 +377,8 @@ class PostalCorrectionGenerator:
                 corrections=validated_corrections,
                 output_dir=province_output_dir,
                 unmapped_detail=unmapped_detail,
-                unmapped_pos=unmapped_pos
+                unmapped_pos=unmapped_pos,
+                skipped_corrections=skipped_corrections
             )
             print(f"[OK] Markdown: {markdown_path}")
 

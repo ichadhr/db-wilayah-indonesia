@@ -68,6 +68,31 @@ def generate_corrections_table(corrections: list[dict[str, Any]]) -> str:
 
     return table_header + "\n".join(rows) + "\n"
 
+def generate_skipped_corrections_table(skipped_corrections: list[dict[str, Any]]) -> str:
+    """Generate markdown table for skipped corrections."""
+    if not skipped_corrections:
+        return "*No corrections were skipped.*\n"
+
+    table_header = """| No | Province | Regency/City | District | Field | Original Value | Corrected Value | Skip Reason |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+"""
+
+    rows = []
+    for idx, correction in enumerate(skipped_corrections, start=1):
+        row = (
+            f"| {idx} "
+            f"| {escape_markdown(correction.get('province', ''))} "
+            f"| {escape_markdown(correction.get('regency_city', ''))} "
+            f"| {escape_markdown(correction.get('district', ''))} "
+            f"| {escape_markdown(correction.get('field', ''))} "
+            f"| {escape_markdown(correction.get('original_value', ''))} "
+            f"| {escape_markdown(correction.get('corrected_value', ''))} "
+            f"| {escape_markdown(correction.get('skip_reason', ''))} |"
+        )
+        rows.append(row)
+
+    return table_header + "\n".join(rows) + "\n"
+
 
 def generate_unmapped_detail_table(unmapped_detail: pl.DataFrame) -> str:
     """Generate markdown table for remaining unmapped detail records."""
@@ -123,6 +148,7 @@ def generate_markdown_report(
     corrections: list[dict[str, Any]],
     unmapped_detail: pl.DataFrame | None = None,
     unmapped_pos: pl.DataFrame | None = None,
+    skipped_corrections: list[dict[str, Any]] | None = None,
     output_path: Path | None = None
 ) -> str:
     """
@@ -227,6 +253,17 @@ These official government records could not be matched to POS data:
 
 """
         markdown += generate_unmapped_detail_table(unmapped_detail)
+
+    # Add skipped corrections section if provided
+    if skipped_corrections is not None and len(skipped_corrections) > 0:
+        markdown += """
+## Skipped Corrections
+
+The following corrections were identified but could not be applied due to matching issues:
+
+### Skipped Corrections Table
+"""
+        markdown += generate_skipped_corrections_table(skipped_corrections)
     
     # Add footer with generation timestamp
     markdown += f"""
@@ -247,7 +284,8 @@ def save_markdown_report(
     corrections: list[dict[str, Any]],
     output_dir: Path,
     unmapped_detail: pl.DataFrame | None = None,
-    unmapped_pos: pl.DataFrame | None = None
+    unmapped_pos: pl.DataFrame | None = None,
+    skipped_corrections: list[dict[str, Any]] | None = None
 ) -> Path:
     """
     Save markdown report to file.
@@ -268,6 +306,7 @@ def save_markdown_report(
         corrections=corrections,
         unmapped_detail=unmapped_detail,
         unmapped_pos=unmapped_pos,
+        skipped_corrections=skipped_corrections,
         output_path=output_path
     )
     return output_path
