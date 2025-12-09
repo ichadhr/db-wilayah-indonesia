@@ -127,8 +127,10 @@ class PostalCorrectionGenerator:
 
     def populate_fields_from_pos(self, corrections: list[dict[str, Any]], unmapped_pos: pl.DataFrame, unmapped_detail: pl.DataFrame) -> list[dict[str, Any]]:
         """
-        Populate province, regency_city, and district fields from POS data.
-        Includes hierarchical validation to ensure district consistency.
+        Populate province, regency_city, and district fields from POS data using hierarchical filtering.
+        Requires that corrections must have hierarchical fields (province, regency_city, district) populated before attempting POS matching.
+        If any hierarchical field is missing, skip the correction entirely. This ensures all corrections use the full hierarchical context
+        for unique POS record identification, eliminating any fallback to single-field matching.
 
         Args:
             corrections: List of corrections from LLM
@@ -136,7 +138,7 @@ class PostalCorrectionGenerator:
             unmapped_detail: Detail dataframe for validation
 
         Returns:
-            Corrections with fields populated from POS data, filtered for hierarchical consistency
+            Corrections with fields populated from POS data, filtered for unique hierarchical matches
         """
         populated = []
 
@@ -146,6 +148,11 @@ class PostalCorrectionGenerator:
 
             if not field or not original_value:
                 print(f"Warning: Skipping correction with missing field or original_value: {correction}")
+                continue
+
+            # Require all hierarchical fields to be populated before attempting POS matching
+            if not all(correction.get(key, "").strip() for key in ["province", "regency_city", "district"]):
+                print(f"Warning: Skipping correction due to missing hierarchical fields (province, regency_city, district): {correction}")
                 continue
 
             # Map field to POS column
@@ -160,23 +167,49 @@ class PostalCorrectionGenerator:
                 print(f"Warning: Unknown field '{field}', skipping: {correction}")
                 continue
 
-            # Find matching POS records
-            matching_pos = unmapped_pos.filter(pl.col(pos_column).str.strip_chars().str.to_lowercase() == original_value.lower())
+            # Start with all POS records and apply hierarchical filtering
+            filtered_pos = unmapped_pos
+
+            # Filter by province (now required)
+            correction_province = correction.get("province", "").strip()
+            filtered_pos = filtered_pos.filter(
+                pl.col("provinsi").str.strip_chars().str.to_lowercase() == correction_province.lower()
+            )
+
+            # Filter by regency_city (now required)
+            correction_regency_city = correction.get("regency_city", "").strip()
+            filtered_pos = filtered_pos.filter(
+                pl.col("kabupaten_kota").str.strip_chars().str.to_lowercase() == correction_regency_city.lower()
+            )
+
+            # Filter by district (now required)
+            correction_district = correction.get("district", "").strip()
+            filtered_pos = filtered_pos.filter(
+                pl.col("kecamatan").str.strip_chars().str.to_lowercase() == correction_district.lower()
+            )
+
+            # Finally, filter by the specific field being corrected
+            matching_pos = filtered_pos.filter(
+                pl.col(pos_column).str.strip_chars().str.to_lowercase() == original_value.lower()
+            )
 
             if len(matching_pos) == 0:
-                print(f"Warning: No matching POS record found for {field}='{original_value}', skipping: {correction}")
+                print(f"Warning: No matching POS record found after hierarchical filtering for {field}='{original_value}' "
+                      f"(province='{correction_province}', regency_city='{correction_regency_city}', district='{correction_district}'), skipping: {correction}")
                 continue
             elif len(matching_pos) > 1:
-                print(f"Warning: Multiple matching POS records found for {field}='{original_value}', using first one")
+                print(f"Warning: Multiple matching POS records found after hierarchical filtering for {field}='{original_value}' "
+                      f"(province='{correction_province}', regency_city='{correction_regency_city}', district='{correction_district}'), "
+                      f"skipping to prevent incorrect hierarchical field population: {correction}")
+                continue
 
-            # Take the first matching record
-            pos_record = matching_pos.head(1)
+            # Exactly one match - use it
+            pos_record = matching_pos
 
-            # Populate fields from POS
+            # Populate/verify fields from POS (should match correction data after filtering)
             correction["province"] = pos_record.select("provinsi").to_series().to_list()[0]
             correction["regency_city"] = pos_record.select("kabupaten_kota").to_series().to_list()[0]
-            pos_district = pos_record.select("kecamatan").to_series().to_list()[0]
-            correction["district"] = pos_district
+            correction["district"] = pos_record.select("kecamatan").to_series().to_list()[0]
 
             populated.append(correction)
 
