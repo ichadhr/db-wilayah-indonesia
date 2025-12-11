@@ -12,10 +12,11 @@ This module provides a unified interface for LLM calls with:
 import asyncio
 import json
 import re
-from typing import Any
+from typing import Any, Dict, List, Optional, Union
 
 import litellm
 from litellm.utils import token_counter
+from typing import Any, Dict, List, Optional, Union, cast
 
 from utils.llm.config import LLMConfig
 
@@ -145,7 +146,9 @@ class LLMClient:
                             print(delta_content, end='', flush=True)
                         content += delta_content
             else:
-                content = response.choices[0].message.content
+                # Use cast to tell Pylance about the expected response structure
+                response_typed = cast(Dict[str, Any], response)
+                content = response_typed['choices'][0]['message']['content']
 
             if not isinstance(content, str):
                 raise ValueError(f"Unexpected response content type: {type(content)}")
@@ -257,9 +260,15 @@ class LLMClient:
                 total_completion_tokens += getattr(usage, 'completion_tokens', 0)
                 if verbose:
                     print(f"[MCP] Tokens this call: prompt={getattr(usage, 'prompt_tokens', 0)}, completion={getattr(usage, 'completion_tokens', 0)}")
-            
-            assistant_message = response.choices[0].message
-            messages.append(assistant_message.model_dump())
+
+            # Use cast to tell Pylance about the expected response structure
+            response_typed = cast(Dict[str, Any], response)
+            assistant_message = response_typed['choices'][0]['message']
+            # Convert message to dict if it's not already (handles both dict and object cases)
+            if hasattr(assistant_message, 'model_dump'):
+                messages.append(assistant_message.model_dump())
+            else:
+                messages.append(assistant_message)
             
             # Check for tool calls
             tool_calls = getattr(assistant_message, 'tool_calls', None)
