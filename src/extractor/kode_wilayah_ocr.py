@@ -17,13 +17,13 @@ import os
 from io import StringIO
 
 import polars as pl
-from extractor.scrapers.singkatan import download_singkatan_images
 from marker.config.parser import ConfigParser
 from marker.converters.table import TableConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
+
+from extractor.scrapers.singkatan import download_singkatan_images
 from models.kode_wilayah import KodeWilayah, TableKodeWilayah
-from utils.text_utils import kode_wilayah
 from utils.paths import (
     get_csv_output_path,
     get_datas_dir,
@@ -31,6 +31,7 @@ from utils.paths import (
     get_parquet_output_path,
     sanitize_folder_file_name,
 )
+from utils.text_utils import kode_wilayah
 
 # Configuration
 SNI_DOC_ID = "SNI_7657-2023"
@@ -130,7 +131,8 @@ class KodeWilayahOCR:
         """
         # Clean table markdown by removing separator lines
         table_lines = [
-            line for line in text.split("\n")
+            line
+            for line in text.split("\n")
             if not line.startswith("|-----") and line.strip()
         ]
         table_md = "\n".join(table_lines)
@@ -144,6 +146,7 @@ class KodeWilayahOCR:
 
         # Initialize corrector
         from pipeline.corrections.bsni import BSNICorrection
+
         corrector = BSNICorrection()
 
         # Extract and validate records
@@ -156,16 +159,16 @@ class KodeWilayahOCR:
             # Apply corrections
             # Debug logging
             # print(f"Checking correction for: {repr(nama_kota)}")
-            corrected_nama_kota = corrector.get_correction(nama_kota, 'bsni')
+            corrected_nama_kota = corrector.get_correction(nama_kota, "bsni")
             if corrected_nama_kota:
                 # print(f"APPLYING CORRECTION: {nama_kota} -> {corrected_nama_kota}")
-                meta = corrector.get_metadata(nama_kota, 'bsni')
+                meta = corrector.get_metadata(nama_kota, "bsni")
                 nama_kota = corrected_nama_kota
-                if meta and meta.get('singkatan'):
-                    singkatan = meta.get('singkatan')
+                if meta and meta.get("singkatan"):
+                    singkatan = meta.get("singkatan")
                 # Also update kabupaten_kota if specified in metadata
-                if meta and meta.get('kabupaten_kota'):
-                    kabupaten_kota = meta.get('kabupaten_kota')
+                if meta and meta.get("kabupaten_kota"):
+                    kabupaten_kota = meta.get("kabupaten_kota")
 
             mapped_record = {
                 "no": record[column_map["no"]],
@@ -228,9 +231,13 @@ class KodeWilayahOCR:
         logger.info(f"Saved {len(records)} kode wilayah records to JSON: {json_path}")
 
         # Save Parquet
-        parquet_path = get_parquet_output_path(f"{filename_base}.parquet", ensure_dir=True)
+        parquet_path = get_parquet_output_path(
+            f"{filename_base}.parquet", ensure_dir=True
+        )
         df_clean.write_parquet(parquet_path)
-        logger.info(f"Saved {len(records)} kode wilayah records to Parquet: {parquet_path}")
+        logger.info(
+            f"Saved {len(records)} kode wilayah records to Parquet: {parquet_path}"
+        )
 
 
 # For backward compatibility, if run as script

@@ -1,16 +1,23 @@
 import json
 import os
 import time
-from typing import Optional, Any
+from typing import Any, Optional
 
-from ..batch_processor import BatchProcessor, _validate_kecamatan_data
 from extractor.pdf_table_extractor import PDFTableExtractor
 from utils.errors import BatchProcessingError, error_handler, log_error
-from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
+from utils.paths import (
+    get_json_output_path,
+    get_parquet_output_path,
+    sanitize_folder_file_name,
+)
 from utils.structure_utils import kecamatan_index_struct
 
+from ..batch_processor import BatchProcessor, _validate_kecamatan_data
 
-def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[dict, list[str]]:
+
+def _extract_single_province_kecamatan(
+    file_path: str, row: dict
+) -> tuple[dict, list[str]]:
     """Extract district data for a single province."""
 
     province_name = row["province_name"]
@@ -34,8 +41,10 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[dict,
 
     try:
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index, unmatched_names, unmapped_bsni = table_extractor.kecamatan_index(
-            start_page=index_start, end_page=index_end, show_progress=False
+        kecamatan_index, unmatched_names, unmapped_bsni = (
+            table_extractor.kecamatan_index(
+                start_page=index_start, end_page=index_end, show_progress=False
+            )
         )
 
         extraction_time = time.time() - start_time
@@ -53,9 +62,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[dict,
         folder_name_base = sanitize_folder_file_name(province_name)
         filename_base = sanitize_folder_file_name(index_name)
         path_base = os.path.join(folder_name_base, filename_base)
-        json_debug_base = os.path.join(
-            "debug", folder_name_base, filename_base
-        )
+        json_debug_base = os.path.join("debug", folder_name_base, filename_base)
 
         # Parquet (efficient storage)
         parquet_path = get_parquet_output_path(f"{path_base}.parquet", ensure_dir=True)
@@ -87,7 +94,10 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[dict,
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
         error_msg = f"Failed to extract kecamatan for {province_name}"
-        log_error(BatchProcessingError(error_msg, province_name=province_name), "kecamatan_extraction")
+        log_error(
+            BatchProcessingError(error_msg, province_name=province_name),
+            "kecamatan_extraction",
+        )
         log_messages.append(f"ERROR: {error_msg}: {e}")
 
     return result, log_messages
@@ -98,19 +108,24 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     """Execute kecamatan index batch processing."""
     if logger is None:
         import logging
-        logger = logging.getLogger(__name__)
 
+        logger = logging.getLogger(__name__)
 
     pdf_path = config.main_pdf
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
+        raise BatchProcessingError(
+            "Structure file not found, run structure extraction first",
+            file_path=structure_path,
+        )
 
     # Get all district index sections
     district_df = kecamatan_index_struct(structure_path, config.province_filter)
     if len(district_df) == 0:
-        raise BatchProcessingError("No district index found in structure", file_path=structure_path)
+        raise BatchProcessingError(
+            "No district index found in structure", file_path=structure_path
+        )
 
     total_provinces = len(district_df)
     logger.info(f"Processing {total_provinces} provinces for kecamatan index")
@@ -123,18 +138,26 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
         batch_df = district_df.slice(batch_start, config.batch_size)
         batch_end = min(batch_start + config.batch_size, total_provinces)
 
-        logger.info(f"Processing batch {batch_start // config.batch_size + 1}: provinces {batch_start + 1}-{batch_end}")
+        logger.info(
+            f"Processing batch {batch_start // config.batch_size + 1}: provinces {batch_start + 1}-{batch_end}"
+        )
 
         # Process batch
         if config.max_workers > 1:
             results = processor.process_batch(
-                pdf_path, batch_df, _extract_single_province_kecamatan,
-                item_name="province", log_filename=None
+                pdf_path,
+                batch_df,
+                _extract_single_province_kecamatan,
+                item_name="province",
+                log_filename=None,
             )
         else:
             results = BatchProcessor.process_sequential(
-                pdf_path, batch_df, _extract_single_province_kecamatan,
-                item_name="province", log_filename=None
+                pdf_path,
+                batch_df,
+                _extract_single_province_kecamatan,
+                item_name="province",
+                log_filename=None,
             )
 
         all_results.extend(results)
@@ -143,72 +166,106 @@ def execute_kecamatan_batch(config, logger=None) -> Optional[Any]:
     successful = [r for r in all_results if r["success"]]
     failed = [r for r in all_results if not r["success"]]
 
-    logger.info(f"Batch processing completed: {len(successful)} successful, {len(failed)} failed")
+    logger.info(
+        f"Batch processing completed: {len(successful)} successful, {len(failed)} failed"
+    )
 
     if failed:
         for result in failed:
-            logger.error(f"Failed province {result['province_name']}: {result['error']}")
+            logger.error(
+                f"Failed province {result['province_name']}: {result['error']}"
+            )
 
     # Collect and log unique unmatched ibukota names from PDF (not found in BSNI)
     # Format: {(ibukota, kabupaten_kota, province)} for deduplication
     all_unmatched_pdf = set()
     for result in successful:
-        province_name = result.get('province_name', '')
-        unmatched_names = result.get('unmatched_names', [])
+        province_name = result.get("province_name", "")
+        unmatched_names = result.get("unmatched_names", [])
         for ibukota, kabupaten_kota in unmatched_names:
             all_unmatched_pdf.add((ibukota, kabupaten_kota, province_name))
 
     if all_unmatched_pdf:
-        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "k_bsni_mismatch_pdf.log")
+        log_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "output",
+            "log",
+            "k_bsni_mismatch_pdf.log",
+        )
 
         # Ensure the log directory exists
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
         # Write with unified format: city | kabupaten_kota | province | singkatan
-        with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"BSNI Mismatch - {len(all_unmatched_pdf)} entries from PDF not found in BSNI reference:\n")
-            f.write(f"Format: city | kabupaten_kota | province | singkatan\n\n")
-            for ibukota, kabupaten_kota, province in sorted(all_unmatched_pdf, key=lambda x: (x[2], x[1], x[0])):
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write(
+                f"BSNI Mismatch - {len(all_unmatched_pdf)} entries from PDF not found in BSNI reference:\n"
+            )
+            f.write("Format: city | kabupaten_kota | province | singkatan\n\n")
+            for ibukota, kabupaten_kota, province in sorted(
+                all_unmatched_pdf, key=lambda x: (x[2], x[1], x[0])
+            ):
                 f.write(f"  - {ibukota} | {kabupaten_kota} | {province} | -\n")
             f.write("\n")
-        logger.info(f"Logged {len(all_unmatched_pdf)} PDF entries not found in BSNI to k_bsni_mismatch_pdf.log")
+        logger.info(
+            f"Logged {len(all_unmatched_pdf)} PDF entries not found in BSNI to k_bsni_mismatch_pdf.log"
+        )
 
     # Collect and log unmapped BSNI cities (BSNI entries not referenced by any PDF district)
     all_unmapped_bsni = {}  # singkatan -> {nama_kota, kabupaten_kota, provinsi}
     for result in successful:
-        unmapped_bsni = result.get('unmapped_bsni', [])
+        unmapped_bsni = result.get("unmapped_bsni", [])
         for entry in unmapped_bsni:
-            singkatan = entry.get('singkatan', '')
+            singkatan = entry.get("singkatan", "")
             if singkatan and singkatan not in all_unmapped_bsni:
                 all_unmapped_bsni[singkatan] = entry
 
     if all_unmapped_bsni:
-        log_path = os.path.join(os.path.dirname(__file__), "..", "..", "output", "log", "k_bsni_mismatch_ocr.log")
+        log_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "output",
+            "log",
+            "k_bsni_mismatch_ocr.log",
+        )
 
         # Ensure the log directory exists
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
         # Write with unified format: city | kabupaten_kota | province | singkatan
-        with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"BSNI Mismatch - {len(all_unmapped_bsni)} BSNI entries not referenced by any PDF district:\n")
-            f.write(f"Format: city | kabupaten_kota | province | singkatan\n\n")
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write(
+                f"BSNI Mismatch - {len(all_unmapped_bsni)} BSNI entries not referenced by any PDF district:\n"
+            )
+            f.write("Format: city | kabupaten_kota | province | singkatan\n\n")
             for singkatan in sorted(all_unmapped_bsni.keys()):
                 entry = all_unmapped_bsni[singkatan]
-                nama_kota = entry.get('nama_kota', '')
-                kabupaten_kota = entry.get('kabupaten_kota', '')
-                provinsi = entry.get('provinsi', '')
-                f.write(f"  - {nama_kota} | {kabupaten_kota} | {provinsi} | {singkatan}\n")
+                nama_kota = entry.get("nama_kota", "")
+                kabupaten_kota = entry.get("kabupaten_kota", "")
+                provinsi = entry.get("provinsi", "")
+                f.write(
+                    f"  - {nama_kota} | {kabupaten_kota} | {provinsi} | {singkatan}\n"
+                )
             f.write("\n")
-        logger.info(f"Logged {len(all_unmapped_bsni)} BSNI entries not referenced by PDF to k_bsni_mismatch_ocr.log")
+        logger.info(
+            f"Logged {len(all_unmapped_bsni)} BSNI entries not referenced by PDF to k_bsni_mismatch_ocr.log"
+        )
 
-    return type('Result', (), {
-        'success': len(failed) == 0,
-        'records_processed': sum(r.get('records', 0) for r in successful),
-        'files_generated': [f for r in successful for f in r.get('files', [])],
-        'metadata': {
-            'total_provinces': total_provinces,
-            'successful_provinces': len(successful),
-            'failed_provinces': len(failed)
+    return type(
+        "Result",
+        (),
+        {
+            "success": len(failed) == 0,
+            "records_processed": sum(r.get("records", 0) for r in successful),
+            "files_generated": [f for r in successful for f in r.get("files", [])],
+            "metadata": {
+                "total_provinces": total_provinces,
+                "successful_provinces": len(successful),
+                "failed_provinces": len(failed),
+            },
+            "error_message": f"{len(failed)} provinces failed" if failed else None,
         },
-        'error_message': f"{len(failed)} provinces failed" if failed else None
-    })()
+    )()

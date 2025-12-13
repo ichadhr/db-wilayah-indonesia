@@ -1,6 +1,5 @@
 """Application settings using pydantic-settings."""
 
-import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -14,13 +13,13 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-
 def validate_log_level_value(v: str) -> str:
     """Shared validator for log level fields."""
     allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     if v.upper() not in allowed_levels:
         raise ValueError(f"log_level must be one of {allowed_levels}")
     return v.upper()
+
 
 class PipelineSettings(BaseSettings):
     """Settings for the data pipeline."""
@@ -29,48 +28,38 @@ class PipelineSettings(BaseSettings):
     batch_size: int = Field(default=38, description="Number of provinces per batch")
     max_workers: int = Field(default=7, description="Concurrent threads")
     debug_mode: bool = Field(default=False, description="Enable debug mode")
-    force_restructure: bool = Field(default=False, description="Force PDF structure re-extraction")
+    force_restructure: bool = Field(
+        default=False, description="Force PDF structure re-extraction"
+    )
 
     # Processing options
     province_filter: Optional[List[str]] = Field(
         default=None,
-        description="Specific provinces to process (empty list means all provinces)"
+        description="Specific provinces to process (empty list means all provinces)",
     )
 
     # File paths
-    main_pdf: str = Field(
-        default="",
-        description="Full path to the main PDF file"
-    )
-
+    main_pdf: str = Field(default="", description="Full path to the main PDF file")
 
     data_directory: str = Field(
-        default="datas",
-        description="Directory containing input data files"
+        default="datas", description="Directory containing input data files"
     )
     output_directory: str = Field(
-        default="output",
-        description="Base output directory for generated files"
+        default="output", description="Base output directory for generated files"
     )
     debug_directory: str = Field(
-        default="debug",
-        description="Directory for debug output files"
+        default="debug", description="Directory for debug output files"
     )
 
     # Logging configuration
     log_level: str = Field(
         default="INFO",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
-    log_directory: str = Field(
-        default="log",
-        description="Directory for log files"
-    )
+    log_directory: str = Field(default="log", description="Directory for log files")
 
     model_config = SettingsConfigDict(
-        env_file_encoding="utf-8",
-        env_prefix="PIPELINE_",
-        extra="ignore"
+        env_file_encoding="utf-8", env_prefix="PIPELINE_", extra="ignore"
     )
 
     @field_validator("log_level")
@@ -106,7 +95,9 @@ class PipelineSettings(BaseSettings):
             return str(resolved_path)
         return v
 
-    @field_validator("data_directory", "output_directory", "debug_directory", "log_directory")
+    @field_validator(
+        "data_directory", "output_directory", "debug_directory", "log_directory"
+    )
     @classmethod
     def resolve_directory_path(cls, v: str) -> str:
         """Resolve directory paths relative to project root."""
@@ -140,14 +131,14 @@ class LoggingSettings(BaseSettings):
     directory: str = Field(default="log", description="Log directory")
     format: str = Field(
         default="%(asctime)s - %(levelname)s - %(message)s",
-        description="Log message format"
+        description="Log message format",
     )
 
     model_config = SettingsConfigDict(
         env_file=str(get_project_root() / ".env"),
         env_file_encoding="utf-8",
         env_prefix="LOG_",
-        extra="ignore"
+        extra="ignore",
     )
 
     @field_validator("level")
@@ -166,10 +157,7 @@ class Settings(BaseSettings):
     pipeline: PipelineSettings = Field(default_factory=PipelineSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
 
-    model_config = SettingsConfigDict(
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file_encoding="utf-8", extra="ignore")
 
 
 # Global settings instance

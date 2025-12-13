@@ -9,8 +9,8 @@ import json
 from typing import List, Optional
 
 import polars as pl
-from models.pdf_structure import AdministrativeStructure
 
+from models.pdf_structure import AdministrativeStructure
 from utils.errors import FileOperationError, ValidationError, error_handler
 
 
@@ -24,13 +24,13 @@ def load_structure(json_path: str) -> AdministrativeStructure:
         raise FileOperationError(
             f"Failed to read structure JSON file: {str(e)}",
             file_path=json_path,
-            operation="file_read"
+            operation="file_read",
         ) from e
     except json.JSONDecodeError as e:
         raise ValidationError(
             f"Invalid JSON format in structure file: {str(e)}",
             field="json_content",
-            value=json_path
+            value=json_path,
         ) from e
 
     try:
@@ -39,7 +39,7 @@ def load_structure(json_path: str) -> AdministrativeStructure:
         raise ValidationError(
             f"Invalid structure data format: {str(e)}",
             field="structure_data",
-            value=json_path
+            value=json_path,
         ) from e
 
 
@@ -85,7 +85,7 @@ def _get_province_section_struct(
         raise ValidationError(
             f"Schema validation failed for {section_attr}. Expected: {expected_columns}, Got: {df.columns}",
             field="dataframe_schema",
-            value=str(df.columns)
+            value=str(df.columns),
         )
     return df
 
@@ -109,7 +109,7 @@ def provinsi_index_struct(json_path: str) -> pl.DataFrame:
         raise ValidationError(
             f"Schema validation failed for provinsi_index_struct. Expected: {expected_columns}, Got: {df.columns}",
             field="dataframe_schema",
-            value=str(df.columns)
+            value=str(df.columns),
         )
     return df
 
@@ -118,7 +118,9 @@ def kabupaten_kota_index_struct(
     json_path: str, province_names: Optional[List[str]] = None
 ) -> pl.DataFrame:
     """Get kabupaten/kota index sections as Polars DataFrame, optionally filtered by province names."""
-    return _get_province_section_struct(json_path, "kabupaten_kota_index", province_names)
+    return _get_province_section_struct(
+        json_path, "kabupaten_kota_index", province_names
+    )
 
 
 def kecamatan_index_struct(
@@ -164,6 +166,6 @@ def kabupaten_kota_detail_struct(
         raise ValidationError(
             f"Schema validation failed for kabupaten_kota_detail_struct. Expected: {expected_columns}, Got: {df.columns}",
             field="dataframe_schema",
-            value=str(df.columns)
+            value=str(df.columns),
         )
     return df

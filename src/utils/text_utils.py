@@ -1,6 +1,6 @@
 import functools
 import re
-from typing import Any, Literal, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 if TYPE_CHECKING:
     from models.kode_wilayah import KodeWilayah
@@ -28,10 +28,10 @@ def format_string(s):
 
     # Check if original string contains special characters that require quoting
     needs_quoting = (
-            "," in original_s
-            or '"' in original_s
-            or "\n" in original_s
-            or "\r" in original_s
+        "," in original_s
+        or '"' in original_s
+        or "\n" in original_s
+        or "\r" in original_s
     )
 
     # Replace newlines and tabs with spaces for the final output
@@ -66,12 +66,13 @@ def format_text(text: str) -> str:
     text = str(text)
 
     # Replace newlines, carriage returns, and tabs with spaces
-    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
 
     # Normalize whitespace (multiple spaces become single space)
-    text = ' '.join(text.split())
+    text = " ".join(text.split())
 
     return text.strip()
+
 
 def clean_leading_number(text: str) -> str:
     """
@@ -85,7 +86,7 @@ def clean_leading_number(text: str) -> str:
     """
     if not text:
         return ""
-    return re.sub(r'^\d+\.?\s+', '', text)
+    return re.sub(r"^\d+\.?\s+", "", text)
 
 
 @functools.lru_cache(maxsize=None)
@@ -100,18 +101,24 @@ def _get_abbreviation_pattern(province: str) -> Optional[re.Pattern]:
         Compiled regex pattern or None if no abbreviations for the province
     """
     province_abbreviations = {
-        'aceh': ['meunasah', 'matang glumpang dua', 'meuna', 'kp'],
-        'nusa_tenggara_barat': ['kampung', 'dusun'],
+        "aceh": ["meunasah", "matang glumpang dua", "meuna", "kp"],
+        "nusa_tenggara_barat": ["kampung", "dusun"],
     }
 
     abbreviations = province_abbreviations.get(province.lower(), [])
     if not abbreviations:
         return None
-    pattern = r'\b(' + '|'.join(abbreviations) + r')\.?\s+'
+    pattern = r"\b(" + "|".join(abbreviations) + r")\.?\s+"
     return re.compile(pattern, re.IGNORECASE)
 
 
-def normalize_for_matching(text: str, field_type: Literal['province', 'kabupaten', 'kelurahan', 'kecamatan'] = 'kelurahan', province: Optional[str] = None) -> str:
+def normalize_for_matching(
+    text: str,
+    field_type: Literal[
+        "province", "kabupaten", "kelurahan", "kecamatan"
+    ] = "kelurahan",
+    province: Optional[str] = None,
+) -> str:
     """
     Normalize Indonesian place names for fuzzy matching.
 
@@ -136,9 +143,9 @@ def normalize_for_matching(text: str, field_type: Literal['province', 'kabupaten
     text = text.lower()
 
     # Normalize common prefix variations for kelurahan
-    if field_type == 'kelurahan':
+    if field_type == "kelurahan":
         # Remove numbered prefixes (e.g., "1. Name" -> "Name")
-        text = re.sub(r'^\d+\s*[-.]?\s*', '', text)
+        text = re.sub(r"^\d+\s*[-.]?\s*", "", text)
 
         # Commented out abbreviation removal to log all pure unmatched records
         # without abbreviation normalization for documentation in comparing_pos/{province}.md
@@ -148,7 +155,7 @@ def normalize_for_matching(text: str, field_type: Literal['province', 'kabupaten
         #         text = pattern.sub('', text)
 
     # Remove all spaces after all processing
-    text = text.replace(' ', '')
+    text = text.replace(" ", "")
 
     return text
 
@@ -267,8 +274,12 @@ def kode_wilayah(raw_record: dict) -> Optional["KodeWilayah"]:
         "provinsi": _clean_field(processed.get("provinsi", "")),
         "kabupaten_kota": _clean_field(processed.get("kabupaten_kota", "")),
         "nama_kota": _clean_field(processed.get("nama_kota", "")),
-        "singkatan_nama_kota": _clean_field(processed.get("singkatan_nama_kota", ""), uppercase=True),
-        "parent_subdivision": _clean_field(processed.get("parent_subdivision", ""), uppercase=True),
+        "singkatan_nama_kota": _clean_field(
+            processed.get("singkatan_nama_kota", ""), uppercase=True
+        ),
+        "parent_subdivision": _clean_field(
+            processed.get("parent_subdivision", ""), uppercase=True
+        ),
     }
 
     return KodeWilayah(**cleaned)
@@ -292,17 +303,17 @@ def normalize_kabupaten_kota(text: str) -> str:
 
     # Expand common abbreviations
     replacements = {
-        r'\bKab\.\s*': 'Kabupaten ',
-        r'\bKab\b': 'Kabupaten',
-        r'\bKota\b': 'Kota',
-        r'\bKep\.\s*': 'Kepulauan ',
+        r"\bKab\.\s*": "Kabupaten ",
+        r"\bKab\b": "Kabupaten",
+        r"\bKota\b": "Kota",
+        r"\bKep\.\s*": "Kepulauan ",
     }
 
     for pattern, replacement in replacements.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
 
     # Clean up extra spaces
-    text = ' '.join(text.split())
+    text = " ".join(text.split())
 
     return text
 
@@ -326,8 +337,8 @@ def normalize_ibukota_kabupaten_kota(text: str) -> str:
 
     # Expand common abbreviations and remove suffixes (case-insensitive)
     replacements = [
-        (r', Kec\..*$', '', re.IGNORECASE),
-        (r'\bP\.\s+', 'Pulau ', re.IGNORECASE)
+        (r", Kec\..*$", "", re.IGNORECASE),
+        (r"\bP\.\s+", "Pulau ", re.IGNORECASE),
         # Add other abbreviations as needed
     ]
 
@@ -351,7 +362,7 @@ def normalize_kecamatan(text: str) -> str:
         return ""
 
     # Handle newlines, tabs, and carriage returns
-    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
 
     text = text.strip()
 
@@ -360,15 +371,15 @@ def normalize_kecamatan(text: str) -> str:
 
     # Expand abbreviations
     replacements = {
-        r'(?i)\bKec\.\s*': 'Kecamatan ',
-        r'(?i)\bKec\b': 'Kecamatan',
+        r"(?i)\bKec\.\s*": "Kecamatan ",
+        r"(?i)\bKec\b": "Kecamatan",
     }
 
     for pattern, replacement in replacements.items():
         text = re.sub(pattern, replacement, text)
 
     # Clean up extra spaces
-    text = ' '.join(text.split())
+    text = " ".join(text.split())
 
     return text
 
@@ -387,7 +398,7 @@ def normalize_kelurahan_desa(text: str) -> str:
         return ""
 
     # Handle newlines, tabs, and carriage returns
-    text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
 
     text = text.strip()
 
@@ -396,26 +407,26 @@ def normalize_kelurahan_desa(text: str) -> str:
 
     # Expand abbreviations
     replacements = {
-        r'(?i)\bKel\.\s*': 'Kelurahan ',
-        r'(?i)\bKel\b': 'Kelurahan',
-        r'(?i)\bDs\.\s*': 'Desa ',
-        r'(?i)\bDs\b': 'Desa',
-        r'(?i)\bDesa\b': 'Desa',
-        r'(?i)\bKelurahan\b': 'Kelurahan',
-        r'(?i)\bKamp\.\s*': 'Kampung ',
-        r'(?i)\bKamp\b': 'Kampung',
-        r'(?i)\bDus\.\s*': 'Dusun ',
-        r'(?i)\bDus\b': 'Dusun',
-        r'(?i)\bMns\.\s*': 'Meunasah ',
-        r'(?i)\bKampong\b': 'Kampung',
-        r'(?i)\bGampong\b': 'Kampung',
+        r"(?i)\bKel\.\s*": "Kelurahan ",
+        r"(?i)\bKel\b": "Kelurahan",
+        r"(?i)\bDs\.\s*": "Desa ",
+        r"(?i)\bDs\b": "Desa",
+        r"(?i)\bDesa\b": "Desa",
+        r"(?i)\bKelurahan\b": "Kelurahan",
+        r"(?i)\bKamp\.\s*": "Kampung ",
+        r"(?i)\bKamp\b": "Kampung",
+        r"(?i)\bDus\.\s*": "Dusun ",
+        r"(?i)\bDus\b": "Dusun",
+        r"(?i)\bMns\.\s*": "Meunasah ",
+        r"(?i)\bKampong\b": "Kampung",
+        r"(?i)\bGampong\b": "Kampung",
     }
 
     for pattern, replacement in replacements.items():
         text = re.sub(pattern, replacement, text)
 
     # Clean up extra spaces
-    text = ' '.join(text.split())
+    text = " ".join(text.split())
 
     return text
 
@@ -423,11 +434,11 @@ def normalize_kelurahan_desa(text: str) -> str:
 def _clean_field(value: Any, uppercase: bool = False) -> str:
     """
     Clean a field value by removing HTML tags and trimming whitespace.
-    
+
     Args:
         value: The value to clean (will be converted to string)
         uppercase: If True, convert the result to uppercase
-        
+
     Returns:
         Cleaned string value
     """

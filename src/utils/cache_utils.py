@@ -28,7 +28,7 @@ def get_pdf_metadata(pdf_path: str) -> PDFCacheMetadata:
         raise FileOperationError(
             f"PDF file not found: {pdf_path}",
             file_path=pdf_path,
-            operation="file_exists_check"
+            operation="file_exists_check",
         )
 
     # Get file size
@@ -38,18 +38,18 @@ def get_pdf_metadata(pdf_path: str) -> PDFCacheMetadata:
         raise FileOperationError(
             f"Failed to get PDF file size: {str(e)}",
             file_path=pdf_path,
-            operation="get_file_size"
+            operation="get_file_size",
         ) from e
 
     # Calculate SHA256 hash of the file
     try:
-        with open(pdf_path, 'rb') as f:
+        with open(pdf_path, "rb") as f:
             pdf_hash = hashlib.sha256(f.read()).hexdigest()
     except (OSError, IOError) as e:
         raise FileOperationError(
             f"Failed to read PDF file for hashing: {str(e)}",
             file_path=pdf_path,
-            operation="file_read"
+            operation="file_read",
         ) from e
 
     return PDFCacheMetadata(pdf_size=pdf_size, pdf_hash=pdf_hash)
@@ -69,15 +69,19 @@ def is_cache_valid(pdf_path: str, cached_metadata: PDFCacheMetadata) -> bool:
     """
     try:
         current_metadata = get_pdf_metadata(pdf_path)
-        return (current_metadata.pdf_size == cached_metadata.pdf_size and
-                current_metadata.pdf_hash == cached_metadata.pdf_hash)
+        return (
+            current_metadata.pdf_size == cached_metadata.pdf_size
+            and current_metadata.pdf_hash == cached_metadata.pdf_hash
+        )
     except FileOperationError:
         # If we can't read the PDF, consider cache invalid
         return False
 
 
 @error_handler(operation_name="load_cached_structure", log_errors=True, re_raise=False)
-def load_cached_structure_with_validation(structure_path: str, pdf_path: str) -> Optional[dict]:
+def load_cached_structure_with_validation(
+    structure_path: str, pdf_path: str
+) -> Optional[dict]:
     """
     Load cached structure and validate it against the current PDF file.
 
@@ -94,15 +98,15 @@ def load_cached_structure_with_validation(structure_path: str, pdf_path: str) ->
         return None
 
     try:
-        with open(structure_path, 'r', encoding='utf-8') as f:
+        with open(structure_path, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
 
         # Check if cache_metadata exists in the cached data
-        if 'cache_metadata' not in cached_data or cached_data['cache_metadata'] is None:
+        if "cache_metadata" not in cached_data or cached_data["cache_metadata"] is None:
             # No cache metadata available, consider cache invalid
             return None
 
-        cached_metadata = PDFCacheMetadata(**cached_data['cache_metadata'])
+        cached_metadata = PDFCacheMetadata(**cached_data["cache_metadata"])
 
         if is_cache_valid(pdf_path, cached_metadata):
             return cached_data

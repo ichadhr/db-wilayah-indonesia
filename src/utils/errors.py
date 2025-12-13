@@ -9,7 +9,7 @@ import logging
 import sys
 import traceback
 from contextlib import contextmanager
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
 # Configure logger
@@ -189,11 +189,11 @@ def log_error(
         level: Logging level ('debug', 'info', 'warning', 'error', 'critical')
     """
     LOG_METHODS = {
-        'debug': logger.debug,
-        'info': logger.info,
-        'warning': logger.warning,
-        'error': logger.error,
-        'critical': logger.critical
+        "debug": logger.debug,
+        "info": logger.info,
+        "warning": logger.warning,
+        "error": logger.error,
+        "critical": logger.critical,
     }
     log_func = LOG_METHODS.get(level, logger.error)
 

@@ -3,30 +3,37 @@ import logging
 import multiprocessing as mp
 import os
 import signal
-from datetime import datetime
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
+from utils.errors import (
+    BatchProcessingError,
+    FileOperationError,
+    error_handler,
+    log_error,
+)
 from utils.paths import get_json_output_path
-from utils.errors import FileOperationError, BatchProcessingError, log_error, error_handler
-# Import removed - using config.settings instead
-from .steps.structure_extraction import execute_structure_extraction
-from .steps.kode_wilayah_extraction import execute_kode_wilayah_extraction
-from .steps.province_index_extraction import execute_province_index_extraction
-from .steps.kabupaten_kota_batch import execute_kabupaten_kota_batch
-from .steps.kabupaten_kota_detail_batch import execute_kabupaten_kota_detail_batch
-from .steps.kecamatan_batch import execute_kecamatan_batch
-from .steps.parquet_merge import execute_parquet_merge
 
 # Import the global shutdown event from batch_processor
 from .batch_processor import shutdown_event
+from .steps.kabupaten_kota_batch import execute_kabupaten_kota_batch
+from .steps.kabupaten_kota_detail_batch import execute_kabupaten_kota_detail_batch
+from .steps.kecamatan_batch import execute_kecamatan_batch
+from .steps.kode_wilayah_extraction import execute_kode_wilayah_extraction
+from .steps.parquet_merge import execute_parquet_merge
+from .steps.province_index_extraction import execute_province_index_extraction
+
+# Import removed - using config.settings instead
+from .steps.structure_extraction import execute_structure_extraction
 
 logger = logging.getLogger(__name__)
 
 
 class PipelineStep(Enum):
     """Enumeration of pipeline steps."""
+
     STRUCTURE_EXTRACTION = "structure_extraction"
     KODE_WILAYAH_EXTRACTION = "kode_wilayah_extraction"
     PROVINCE_INDEX_EXTRACTION = "province_index_extraction"
@@ -39,9 +46,10 @@ class PipelineStep(Enum):
 @dataclass
 class PipelineConfig:
     """Configuration for the data pipeline."""
+
     main_pdf: str = ""
     batch_size: int = 38  # Default value, will be overridden by settings
-    max_workers: int = 7   # Default value, will be overridden by settings
+    max_workers: int = 7  # Default value, will be overridden by settings
     province_filter: Optional[List[str]] = None
     debug_mode: bool = False
     force_restructure: bool = False
@@ -52,6 +60,7 @@ class PipelineConfig:
 @dataclass
 class StepResult:
     """Result of a pipeline step execution."""
+
     step: PipelineStep
     success: bool
     start_time: datetime
@@ -88,16 +97,15 @@ class PipelineOrchestrator:
         """Setup logging configuration."""
         log_dir = self.config.log_directory
         os.makedirs(log_dir, exist_ok=True)
-        log_filename = os.path.join(log_dir, datetime.now().strftime("pipeline-%Y%m%d-%H%M%S.log"))
+        log_filename = os.path.join(
+            log_dir, datetime.now().strftime("pipeline-%Y%m%d-%H%M%S.log")
+        )
 
         logging.basicConfig(
             level=getattr(logging, self.config.log_level),
             format="%(asctime)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(log_filename),
-                logging.StreamHandler()
-            ],
-            force=True
+            handlers=[logging.FileHandler(log_filename), logging.StreamHandler()],
+            force=True,
         )
 
         # Ensure multiprocessing logger doesn't interfere
@@ -106,24 +114,33 @@ class PipelineOrchestrator:
 
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown."""
+
         def signal_handler(signum, frame):
             """Handle shutdown signals."""
             if not self.shutdown_requested:
                 self.shutdown_requested = True
                 shutdown_event.set()  # Set the global shutdown event for multiprocessing
-                self.logger.warning("Shutdown signal received. Initiating graceful shutdown...")
-                print("\nShutdown signal received. Waiting for current operations to complete...")
+                self.logger.warning(
+                    "Shutdown signal received. Initiating graceful shutdown..."
+                )
+                print(
+                    "\nShutdown signal received. Waiting for current operations to complete..."
+                )
 
         # Register signal handlers
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-    @error_handler(operation_name="save_pipeline_state", log_errors=True, re_raise=False)
+    @error_handler(
+        operation_name="save_pipeline_state", log_errors=True, re_raise=False
+    )
     def _save_state(self):
         """Save current pipeline state for resumability."""
         try:
             state = {
-                "completed_steps": [step.step.value for step in self.step_results if step.success],
+                "completed_steps": [
+                    step.step.value for step in self.step_results if step.success
+                ],
                 "current_step": self.current_step.value if self.current_step else None,
                 "timestamp": datetime.now().isoformat(),
                 "config": {
@@ -132,10 +149,10 @@ class PipelineOrchestrator:
                     "max_workers": self.config.max_workers,
                     "province_filter": self.config.province_filter,
                     "debug_mode": self.config.debug_mode,
-                }
+                },
             }
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
-            with open(self.state_file, 'w', encoding='utf-8') as f:
+            with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2, ensure_ascii=False)
             self.logger.info(f"Pipeline state saved to {self.state_file}")
         except (IOError, OSError) as e:
@@ -143,49 +160,51 @@ class PipelineOrchestrator:
                 FileOperationError(
                     f"Failed to save pipeline state: {str(e)}",
                     file_path=self.state_file,
-                    operation="file_write"
+                    operation="file_write",
                 ),
                 "save_pipeline_state",
-                "warning"
+                "warning",
             )
         except (TypeError, ValueError) as e:
             log_error(
                 BatchProcessingError(
                     f"Failed to serialize pipeline state: {str(e)}",
-                    details={"error": str(e)}
+                    details={"error": str(e)},
                 ),
                 "save_pipeline_state",
-                "warning"
+                "warning",
             )
 
-    @error_handler(operation_name="load_pipeline_state", log_errors=True, re_raise=False)
+    @error_handler(
+        operation_name="load_pipeline_state", log_errors=True, re_raise=False
+    )
     def _load_state(self) -> Dict[str, Any]:
         """Load previous pipeline state."""
         if not os.path.exists(self.state_file):
             return {}
 
         try:
-            with open(self.state_file, 'r', encoding='utf-8') as f:
+            with open(self.state_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (IOError, OSError) as e:
             log_error(
                 FileOperationError(
                     f"Failed to read pipeline state file: {str(e)}",
                     file_path=self.state_file,
-                    operation="file_read"
+                    operation="file_read",
                 ),
                 "load_pipeline_state",
-                "warning"
+                "warning",
             )
             return {}
         except (json.JSONDecodeError, ValueError) as e:
             log_error(
                 BatchProcessingError(
                     f"Failed to parse pipeline state JSON: {str(e)}",
-                    details={"file_path": self.state_file}
+                    details={"file_path": self.state_file},
                 ),
                 "load_pipeline_state",
-                "warning"
+                "warning",
             )
             return {}
 
@@ -206,10 +225,10 @@ class PipelineOrchestrator:
 
         # Print shutdown summary
         completed_steps = [step for step in self.step_results if step.success]
-        print(f"\nShutdown Summary:")
+        print("\nShutdown Summary:")
         print(f"   Completed steps: {len(completed_steps)}")
-        print(f"   Pipeline interrupted - no state saved")
-        print(f"   Run pipeline again to restart from beginning")
+        print("   Pipeline interrupted - no state saved")
+        print("   Run pipeline again to restart from beginning")
 
         # Clear shutdown event for potential future runs
         shutdown_event.clear()
@@ -232,11 +251,16 @@ class PipelineOrchestrator:
             # Step 1: PDF Structure Analysis
             # Always check if structure file exists, even if step is marked as completed
             structure_path = get_json_output_path("structure_pdf.json")
-            if PipelineStep.STRUCTURE_EXTRACTION.value not in completed_steps or not os.path.exists(structure_path):
+            if (
+                PipelineStep.STRUCTURE_EXTRACTION.value not in completed_steps
+                or not os.path.exists(structure_path)
+            ):
                 if not self._execute_step(PipelineStep.STRUCTURE_EXTRACTION):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.STRUCTURE_EXTRACTION.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.STRUCTURE_EXTRACTION.value}"
+                )
 
             # Check for shutdown request
             if self.shutdown_requested:
@@ -258,7 +282,9 @@ class PipelineOrchestrator:
                 if not self._execute_step(PipelineStep.PROVINCE_INDEX_EXTRACTION):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.PROVINCE_INDEX_EXTRACTION.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.PROVINCE_INDEX_EXTRACTION.value}"
+                )
 
             # Check for shutdown request
             if self.shutdown_requested:
@@ -270,7 +296,9 @@ class PipelineOrchestrator:
                 if not self._execute_step(PipelineStep.KABUPATEN_KOTA_INDEX_BATCH):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.KABUPATEN_KOTA_INDEX_BATCH.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.KABUPATEN_KOTA_INDEX_BATCH.value}"
+                )
 
             # Check for shutdown request
             if self.shutdown_requested:
@@ -282,7 +310,9 @@ class PipelineOrchestrator:
                 if not self._execute_step(PipelineStep.KECAMATAN_INDEX_BATCH):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.KECAMATAN_INDEX_BATCH.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.KECAMATAN_INDEX_BATCH.value}"
+                )
 
             # Check for shutdown request
             if self.shutdown_requested:
@@ -294,14 +324,18 @@ class PipelineOrchestrator:
                 if not self._execute_step(PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.KABUPATEN_KOTA_DETAIL_BATCH.value}"
+                )
 
             # Step 7: Parquet Merge
             if PipelineStep.PARQUET_MERGE.value not in completed_steps:
                 if not self._execute_step(PipelineStep.PARQUET_MERGE):
                     return False
             else:
-                self.logger.info(f"Skipping completed step: {PipelineStep.PARQUET_MERGE.value}")
+                self.logger.info(
+                    f"Skipping completed step: {PipelineStep.PARQUET_MERGE.value}"
+                )
 
             # Clean up state file on successful completion
             if os.path.exists(self.state_file):
@@ -359,10 +393,12 @@ class PipelineOrchestrator:
                     end_time=end_time,
                     records_processed=result.records_processed,
                     files_generated=result.files_generated,
-                    metadata=result.metadata
+                    metadata=result.metadata,
                 )
                 self.step_results.append(step_result)
-                self.logger.info(f"Step {step.value} completed successfully in {step_result.duration:.2f}s")
+                self.logger.info(
+                    f"Step {step.value} completed successfully in {step_result.duration:.2f}s"
+                )
 
                 # Save state after successful step completion
                 self._save_state()
@@ -376,7 +412,7 @@ class PipelineOrchestrator:
                     success=False,
                     start_time=start_time,
                     end_time=end_time,
-                    error_message=error_msg
+                    error_message=error_msg,
                 )
                 self.step_results.append(step_result)
                 return False
@@ -389,7 +425,7 @@ class PipelineOrchestrator:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                error_message=str(e)
+                error_message=str(e),
             )
             self.step_results.append(step_result)
             return False
@@ -401,23 +437,24 @@ class PipelineOrchestrator:
                 success=False,
                 start_time=start_time,
                 end_time=end_time,
-                error_message=str(e)
+                error_message=str(e),
             )
             self.step_results.append(step_result)
             return False
 
     def _execute_structure_extraction(self) -> Optional[Any]:
         """Execute PDF structure extraction step."""
-        return execute_structure_extraction(self.config, self.config.force_restructure, None, self.logger)
+        return execute_structure_extraction(
+            self.config, self.config.force_restructure, None, self.logger
+        )
 
     def _execute_kode_wilayah_extraction(self) -> Optional[Any]:
         """Execute kode wilayah extraction step."""
-        return execute_kode_wilayah_extraction(self.config, self.logger)
+        return execute_kode_wilayah_extraction(self.logger)
 
     def _execute_province_index_extraction(self) -> Optional[Any]:
         """Execute province index extraction step."""
         return execute_province_index_extraction(self.config, self.logger)
-
 
     def _execute_kabupaten_kota_batch(self) -> Optional[Any]:
         """Execute kabupaten/kota index batch processing."""
@@ -433,7 +470,7 @@ class PipelineOrchestrator:
 
     def _execute_parquet_merge(self) -> Optional[Any]:
         """Execute parquet file merging step."""
-        return execute_parquet_merge(self.config, self.logger)
+        return execute_parquet_merge(self.logger)
 
     # Public API methods for external callers
     def execute_structure_extraction(self):
@@ -460,12 +497,11 @@ class PipelineOrchestrator:
         """Public API for kecamatan batch processing."""
         return self._execute_kecamatan_batch()
 
-
     def _print_summary(self):
         """Print pipeline execution summary."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("PIPELINE EXECUTION SUMMARY")
-        print("="*60)
+        print("=" * 60)
 
         total_duration = sum(step.duration for step in self.step_results)
         total_records = sum(step.records_processed for step in self.step_results)
@@ -487,4 +523,4 @@ class PipelineOrchestrator:
                 print(f"    Error: {step_result.error_message}")
             print()
 
-        print("="*60)
+        print("=" * 60)

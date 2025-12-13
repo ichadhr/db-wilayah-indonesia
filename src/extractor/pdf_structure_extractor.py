@@ -2,15 +2,16 @@ import re
 import warnings
 from typing import Any, List, Optional
 
-from models.pdf_structure import (
-    Province,
-    AdministrativeStructure,
-    PageRange,
-    Section,
-    ProvinceSections,
-    Detail
-)
 from pypdf import PdfReader
+
+from models.pdf_structure import (
+    AdministrativeStructure,
+    Detail,
+    PageRange,
+    Province,
+    ProvinceSections,
+    Section,
+)
 from utils.errors import PDFStructureError, error_handler, log_error
 from utils.paths import get_json_output_path
 from utils.progress import progress_manager
@@ -74,8 +75,8 @@ class PDFStructureExtractor:
         """
         # Process pages with enhanced rich progress tracking
         with progress_manager.pdf_processing_progress(
-                total_pages=len(self.reader.pages),
-                description="Structuring PDF pages",
+            total_pages=len(self.reader.pages),
+            description="Structuring PDF pages",
         ) as progress_ctx:
             for page_num, page in enumerate(self.reader.pages):
                 try:
@@ -92,10 +93,10 @@ class PDFStructureExtractor:
                     log_error(
                         PDFStructureError(
                             f"Failed to process page {page_num}: {str(extract_error)}",
-                            page_num=page_num
+                            page_num=page_num,
                         ),
                         operation="pdf_structure_extraction",
-                        level="error"
+                        level="error",
                     )
                     progress_ctx.advance(1)
                     continue
@@ -126,7 +127,7 @@ class PDFStructureExtractor:
         # Check for overall document index page
         if re.search(re.escape(self.PROVINSI_PAGE), text, re.IGNORECASE):
             if (
-                    self.document_index_page is None
+                self.document_index_page is None
             ):  # Only set once for the first occurrence
                 self.document_index_page = page_num
 
@@ -225,20 +226,18 @@ class PDFStructureExtractor:
                     province_letter = None
                     if self.current_province.details:
                         first_detail_id = self.current_province.details[0].id
-                        parts = first_detail_id.split('.')
+                        parts = first_detail_id.split(".")
                         if len(parts) >= 2:
                             province_letter = parts[1]
 
                     # Check if any pattern matches the province
                     for code, name in kecamatan_index_patterns:
-                        if province_letter and code.startswith(f'C.{province_letter}'):
+                        if province_letter and code.startswith(f"C.{province_letter}"):
                             if kecamatan_index_start == page_num + 1:
                                 kecamatan_index_end = page_num + PAGE_OFFSET_ADJUSTMENT
                             else:
                                 kecamatan_index_end = page_num
-                            self.current_province.sections.kecamatan_index.page_range.end = (
-                                kecamatan_index_end
-                            )
+                            self.current_province.sections.kecamatan_index.page_range.end = kecamatan_index_end
                             break
 
                 # Process all detail matches (including .2, .3, etc.)
@@ -402,23 +401,22 @@ class PDFStructureExtractor:
 
         # Check province page range validity (skip if end is None)
         if (
-                province_end is not None
-                and province.page_range.start is not None
-                and province.page_range.start >= province_end
+            province_end is not None
+            and province.page_range.start is not None
+            and province.page_range.start >= province_end
         ):
             issues.append(f"Province {province.name}: Invalid page range")
 
         # Check page ranges are within document bounds
         total_pages = len(self.reader.pages)
         if province.page_range.start is not None and (
-                province.page_range.start < 0
-                or province.page_range.start >= total_pages
+            province.page_range.start < 0 or province.page_range.start >= total_pages
         ):
             issues.append(
                 f"Province {province.name}: Start page {province.page_range.start} outside document bounds (0-{total_pages - 1})"
             )
         if province_end is not None and (
-                province_end < 0 or province_end > total_pages
+            province_end < 0 or province_end > total_pages
         ):
             issues.append(
                 f"Province {province.name}: End page {province_end} outside document bounds (0-{total_pages})"
@@ -428,8 +426,8 @@ class PDFStructureExtractor:
         """Validate that provinces have required sections."""
         # Ensure provinces have required sections
         if (
-                province.sections.kabupaten_kota_index.page_range.start is None
-                or province.sections.kecamatan_index.page_range.start is None
+            province.sections.kabupaten_kota_index.page_range.start is None
+            or province.sections.kecamatan_index.page_range.start is None
         ):
             issues.append(f"Province {province.name}: Missing required sections")
 
@@ -438,18 +436,16 @@ class PDFStructureExtractor:
         province_end = province.page_range.end
 
         # Sort details by page range for proper overlap detection
-        sorted_details = sorted(
-            province.details, key=lambda x: x.page_range.start or 0
-        )
+        sorted_details = sorted(province.details, key=lambda x: x.page_range.start or 0)
 
         for j, detail in enumerate(sorted_details):
             detail_end = detail.page_range.end
 
             # Check detail page range validity (skip if end is None)
             if (
-                    detail_end is not None
-                    and detail.page_range.start is not None
-                    and detail.page_range.start > detail_end
+                detail_end is not None
+                and detail.page_range.start is not None
+                and detail.page_range.start > detail_end
             ):
                 issues.append(
                     f"Province {province.name}, Detail {detail.id}: Invalid page range"
@@ -457,8 +453,8 @@ class PDFStructureExtractor:
 
             # Check detail page ranges within province bounds
             if (
-                    detail.page_range.start is not None
-                    and province.page_range.start is not None
+                detail.page_range.start is not None
+                and province.page_range.start is not None
             ):
                 if detail.page_range.start < province.page_range.start:
                     issues.append(
@@ -475,9 +471,9 @@ class PDFStructureExtractor:
                 next_detail = sorted_details[j + 1]
                 next_start = next_detail.page_range.start
                 if (
-                        detail_end is not None
-                        and next_start is not None
-                        and detail_end > next_start
+                    detail_end is not None
+                    and next_start is not None
+                    and detail_end > next_start
                 ):
                     issues.append(
                         f"Province {province.name}: Overlapping details {detail.id} and {next_detail.id}"
@@ -510,9 +506,9 @@ class PDFStructureExtractor:
                 province_end = province.page_range.end
                 next_start = next_province.page_range.start
                 if (
-                        province_end is not None
-                        and next_start is not None
-                        and province_end > next_start
+                    province_end is not None
+                    and next_start is not None
+                    and province_end > next_start
                 ):
                     issues.append(
                         f"Overlapping page ranges between {province.name} and {next_province.name}"
@@ -527,11 +523,16 @@ class PDFStructureExtractor:
             validation: Validation result dictionary
         """
         if validation["valid"]:
-            print(f"\nExtraction successful!")
-            print(f"Found {validation['province_count']} provinces")
-            print(f"Found {validation['total_details']} total kabupaten/kota")
+            print("\nExtraction successful!")
+            # These keys are expected to be added to the validation dictionary
+            # by the validate_structure method for a complete report.
+            # Assuming they will be present or handled upstream.
+            print(f"Found {validation.get('province_count', 'N/A')} provinces")
+            print(
+                f"Found {validation.get('total_details', 'N/A')} total kabupaten/kota"
+            )
         else:
-            print(f"\nExtraction completed with issues:")
+            print("\nExtraction completed with issues:")
             for issue in validation["issues"]:
                 print(f"  - {issue}")
 
@@ -539,7 +540,9 @@ class PDFStructureExtractor:
 # usage
 if __name__ == "__main__":
     # File
-    main_pdf_path = "datas/Keputusan_Menteri_Dalam_Negeri_Nomor_300.2.2-2138_Tahun_2025.pdf"
+    main_pdf_path = (
+        "datas/Keputusan_Menteri_Dalam_Negeri_Nomor_300.2.2-2138_Tahun_2025.pdf"
+    )
 
     try:
         extractor = PDFStructureExtractor(main_pdf_path)
@@ -553,7 +556,7 @@ if __name__ == "__main__":
         import json
 
         with open(
-                get_json_output_path("structure_output.json"), "w", encoding="utf-8"
+            get_json_output_path("structure_output.json"), "w", encoding="utf-8"
         ) as f:
             json.dump(structure, f, ensure_ascii=False, indent=2)
 

@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -40,6 +39,7 @@ class Province(BaseModel):
 
 class PDFCacheMetadata(BaseModel):
     """Metadata for PDF file caching and validation."""
+
     pdf_size: int
     pdf_hash: str
 

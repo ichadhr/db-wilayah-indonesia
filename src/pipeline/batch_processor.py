@@ -4,22 +4,26 @@ Generic batch processing for PDF table extractions with multiprocessing support
 """
 
 import json
-import multiprocessing as mp
-from datetime import datetime
-import time
-import os
 import logging
+import multiprocessing as mp
+import os
+import time
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+from utils.errors import (
+    BatchProcessingError,
+    FileOperationError,
+    TableExtractionError,
+    log_error,
+)
 from utils.paths import (
     get_csv_output_path,
     get_json_output_path,
     get_parquet_output_path,
-    sanitize_folder_file_name
+    sanitize_folder_file_name,
 )
 from utils.progress import progress_manager
-from utils.errors import BatchProcessingError, FileOperationError, TableExtractionError, log_error, error_handler
-
 
 # Global shutdown event for graceful termination
 shutdown_event = mp.Event()
@@ -32,21 +36,21 @@ class BatchProcessor:
         self.max_workers = max_workers
         self.logger = logging.getLogger(__name__)
         self.batch_stats = {
-            'total_batches': 0,
-            'successful_batches': 0,
-            'failed_batches': 0,
-            'total_processing_time': 0.0,
-            'total_records': 0,
-            'error_summary': {}
+            "total_batches": 0,
+            "successful_batches": 0,
+            "failed_batches": 0,
+            "total_processing_time": 0.0,
+            "total_records": 0,
+            "error_summary": {},
         }
 
     def process_batch(
-            self,
-            file_path: str,
-            data_sections_df,
-            extraction_func: Callable[[str, dict], tuple[Dict, List[str]]],
-            item_name: str = "item",
-            log_filename: Optional[str] = None
+        self,
+        file_path: str,
+        data_sections_df,
+        extraction_func: Callable[[str, dict], tuple[Dict, List[str]]],
+        item_name: str = "item",
+        log_filename: Optional[str] = None,
     ) -> List[Dict]:
         """Process items in parallel using multiprocessing with enhanced error handling"""
         batch_start_time = time.time()
@@ -69,22 +73,27 @@ class BatchProcessor:
         failed_tasks = []
 
         with progress_manager.batch_processing_progress(
-                total_items=len(tasks), item_name=item_name, description=f"Processing {item_name}s"
+            total_items=len(tasks),
+            item_name=item_name,
+            description=f"Processing {item_name}s",
         ) as progress_ctx:
-
             pool = None
             try:
                 pool = mp.Pool(processes=self.max_workers)
                 # Submit all tasks and collect results with timeout and error handling
                 futures = [
-                    pool.apply_async(_multiprocessing_worker, (file_path, task, extraction_func))
+                    pool.apply_async(
+                        _multiprocessing_worker, (file_path, task, extraction_func)
+                    )
                     for task in tasks
                 ]
 
                 for i, future in enumerate(futures):
                     # Check for shutdown signal
                     if shutdown_event.is_set():
-                        self.logger.warning("Shutdown signal detected, terminating remaining tasks...")
+                        self.logger.warning(
+                            "Shutdown signal detected, terminating remaining tasks..."
+                        )
                         pool.terminate()
                         pool.join()
 
@@ -97,7 +106,7 @@ class BatchProcessor:
                                 "error": "Task cancelled due to shutdown",
                                 "records": 0,
                                 "time": 0.0,
-                                "files": []
+                                "files": [],
                             }
                             results.append(cancelled_result)
                             failed_tasks.append(province_name)
@@ -106,13 +115,17 @@ class BatchProcessor:
 
                     try:
                         # Add timeout to prevent hanging
-                        result, log_messages = future.get(timeout=300)  # 5 minute timeout
+                        result, log_messages = future.get(
+                            timeout=300
+                        )  # 5 minute timeout
                         results.append(result)
                         all_log_messages.extend(log_messages)
                         progress_ctx.advance(1)
                     except mp.TimeoutError:
                         province_name = tasks[i]["province_name"]
-                        error_msg = f"Timeout processing {province_name} after 5 minutes"
+                        error_msg = (
+                            f"Timeout processing {province_name} after 5 minutes"
+                        )
                         self.logger.error(error_msg)
                         failed_result = {
                             "province_name": province_name,
@@ -120,14 +133,20 @@ class BatchProcessor:
                             "error": error_msg,
                             "records": 0,
                             "time": 300.0,
-                            "files": []
+                            "files": [],
                         }
                         results.append(failed_result)
                         failed_tasks.append(province_name)
                         progress_ctx.advance(1)
-                    except (TableExtractionError, FileOperationError, BatchProcessingError) as e:
+                    except (
+                        TableExtractionError,
+                        FileOperationError,
+                        BatchProcessingError,
+                    ) as e:
                         province_name = tasks[i]["province_name"]
-                        error_msg = f"Structured error processing {province_name}: {str(e)}"
+                        error_msg = (
+                            f"Structured error processing {province_name}: {str(e)}"
+                        )
                         log_error(e, "batch_processing", "error")
                         failed_result = {
                             "province_name": province_name,
@@ -135,14 +154,16 @@ class BatchProcessor:
                             "error": error_msg,
                             "records": 0,
                             "time": 0.0,
-                            "files": []
+                            "files": [],
                         }
                         results.append(failed_result)
                         failed_tasks.append(province_name)
                         progress_ctx.advance(1)
                     except Exception as e:
                         province_name = tasks[i]["province_name"]
-                        error_msg = f"Unexpected error processing {province_name}: {str(e)}"
+                        error_msg = (
+                            f"Unexpected error processing {province_name}: {str(e)}"
+                        )
                         log_error(e, "batch_processing", "error")
                         failed_result = {
                             "province_name": province_name,
@@ -150,7 +171,7 @@ class BatchProcessor:
                             "error": error_msg,
                             "records": 0,
                             "time": 0.0,
-                            "files": []
+                            "files": [],
                         }
                         results.append(failed_result)
                         failed_tasks.append(province_name)
@@ -164,14 +185,14 @@ class BatchProcessor:
                     pool.terminate()
                     pool.join()
                 # Mark remaining tasks as cancelled
-                for task in tasks[len(results):]:
+                for task in tasks[len(results) :]:
                     cancelled_result = {
                         "province_name": task["province_name"],
                         "success": False,
                         "error": "Task cancelled due to KeyboardInterrupt",
                         "records": 0,
                         "time": 0.0,
-                        "files": []
+                        "files": [],
                     }
                     results.append(cancelled_result)
                     failed_tasks.append(task["province_name"])
@@ -181,14 +202,14 @@ class BatchProcessor:
             except Exception as pool_error:
                 log_error(pool_error, "pool_processing", "error")
                 # Mark remaining tasks as failed
-                for task in tasks[len(results):]:
+                for task in tasks[len(results) :]:
                     failed_result = {
                         "province_name": task["province_name"],
                         "success": False,
                         "error": f"Pool error: {str(pool_error)}",
                         "records": 0,
                         "time": 0.0,
-                        "files": []
+                        "files": [],
                     }
                     results.append(failed_result)
                     failed_tasks.append(task["province_name"])
@@ -203,33 +224,35 @@ class BatchProcessor:
         successful_results = [r for r in results if r.get("success", False)]
         failed_results = [r for r in results if not r.get("success", True)]
 
-        self.batch_stats['total_batches'] += 1
-        self.batch_stats['successful_batches'] += 1 if len(failed_results) == 0 else 0
-        self.batch_stats['failed_batches'] += 1 if len(failed_results) > 0 else 0
-        self.batch_stats['total_processing_time'] += batch_time
-        self.batch_stats['total_records'] += sum(r.get("records", 0) for r in successful_results)
+        self.batch_stats["total_batches"] += 1
+        self.batch_stats["successful_batches"] += 1 if len(failed_results) == 0 else 0
+        self.batch_stats["failed_batches"] += 1 if len(failed_results) > 0 else 0
+        self.batch_stats["total_processing_time"] += batch_time
+        self.batch_stats["total_records"] += sum(
+            r.get("records", 0) for r in successful_results
+        )
 
         # Collect error summary
         for result in failed_results:
             error = result.get("error", "Unknown error")
-            if error in self.batch_stats['error_summary']:
-                self.batch_stats['error_summary'][error] += 1
+            if error in self.batch_stats["error_summary"]:
+                self.batch_stats["error_summary"][error] += 1
             else:
-                self.batch_stats['error_summary'][error] = 1
+                self.batch_stats["error_summary"][error] = 1
 
         # Write all collected log messages to file
         if log_filename:
-            with open(log_filename, 'a', encoding='utf-8') as f:
+            with open(log_filename, "a", encoding="utf-8") as f:
                 for message in all_log_messages:
                     # Parse level and message
-                    if message.startswith('INFO: '):
-                        level = 'INFO'
+                    if message.startswith("INFO: "):
+                        level = "INFO"
                         msg = message[6:]
-                    elif message.startswith('ERROR: '):
-                        level = 'ERROR'
+                    elif message.startswith("ERROR: "):
+                        level = "ERROR"
                         msg = message[7:]
                     else:
-                        level = 'INFO'
+                        level = "INFO"
                         msg = message
 
                     # Write formatted log entry
@@ -245,7 +268,7 @@ class BatchProcessor:
         data_sections_df,
         extraction_func: Callable[[str, dict], tuple[Dict, List[str]]],
         item_name: str = "item",
-        log_filename: Optional[str] = None
+        log_filename: Optional[str] = None,
     ) -> List[Dict]:
         """Process items sequentially (for debugging/low resource environments)"""
         rows = list(data_sections_df.iter_rows(named=True))
@@ -253,7 +276,9 @@ class BatchProcessor:
         all_log_messages = []
 
         with progress_manager.batch_processing_progress(
-                total_items=len(rows), item_name=item_name, description=f"Processing {item_name}s"
+            total_items=len(rows),
+            item_name=item_name,
+            description=f"Processing {item_name}s",
         ) as progress_context:
             for row in rows:
                 result, log_messages = extraction_func(file_path, row)
@@ -263,17 +288,17 @@ class BatchProcessor:
 
         # Write all collected log messages to file
         if log_filename:
-            with open(log_filename, 'a', encoding='utf-8') as f:
+            with open(log_filename, "a", encoding="utf-8") as f:
                 for message in all_log_messages:
                     # Parse level and message
-                    if message.startswith('INFO: '):
-                        level = 'INFO'
+                    if message.startswith("INFO: "):
+                        level = "INFO"
                         msg = message[6:]
-                    elif message.startswith('ERROR: '):
-                        level = 'ERROR'
+                    elif message.startswith("ERROR: "):
+                        level = "ERROR"
                         msg = message[7:]
                     else:
-                        level = 'INFO'
+                        level = "INFO"
                         msg = message
 
                     # Write formatted log entry
@@ -285,9 +310,9 @@ class BatchProcessor:
 
 
 def _multiprocessing_worker(
-        file_path: str,
-        task: dict,
-        extraction_func: Callable[[Any, dict], tuple[Dict, List[str]]]
+    file_path: str,
+    task: dict,
+    extraction_func: Callable[[Any, dict], tuple[Dict, List[str]]],
 ) -> tuple[Dict, list[str]]:
     """Worker function for multiprocessing (module-level, can be pickled)."""
     # Check shutdown event at the start of worker
@@ -298,7 +323,7 @@ def _multiprocessing_worker(
             "error": "Task cancelled due to shutdown signal",
             "records": 0,
             "time": 0.0,
-            "files": []
+            "files": [],
         }, []
 
     try:
@@ -312,7 +337,7 @@ def _multiprocessing_worker(
             "error": "Task interrupted by KeyboardInterrupt",
             "records": 0,
             "time": 0.0,
-            "files": []
+            "files": [],
         }, []
     except (TableExtractionError, FileOperationError, BatchProcessingError) as e:
         log_error(e, "multiprocessing_worker", "error")
@@ -322,7 +347,7 @@ def _multiprocessing_worker(
             "error": f"Worker error: {str(e)}",
             "records": 0,
             "time": 0.0,
-            "files": []
+            "files": [],
         }, []
     except Exception as e:
         log_error(e, "multiprocessing_worker", "error")
@@ -332,7 +357,7 @@ def _multiprocessing_worker(
             "error": f"Worker error: {str(e)}",
             "records": 0,
             "time": 0.0,
-            "files": []
+            "files": [],
         }, []
 
 
@@ -368,7 +393,6 @@ def _print_batch_summary(results: List[Dict], log_filename: Optional[str] = None
     if log_filename:
         print(f"\nDetailed logs saved to: {log_filename}")
 
-
     def get_batch_statistics(self) -> Dict:
         """Get current batch processing statistics."""
         return self.batch_stats.copy()
@@ -381,63 +405,89 @@ def _validate_kabupaten_kota_data(df, province_name: str) -> List[str]:
     if len(df) == 0:
         errors.append(f"No kabupaten/kota records found for {province_name}")
         return errors
-    
-    
+
     def _validate_kecamatan_data(df, province_name: str) -> List[str]:
         """Validate kecamatan index data for consistency and completeness."""
         errors = []
-    
+
         if len(df) == 0:
             errors.append(f"No kecamatan records found for {province_name}")
             return errors
-    
+
         # Check required columns
-        required_columns = ["nama_kecamatan", "kode_kecamatan", "nama_kabupaten_kota", "kode_kabupaten_kota"]
+        required_columns = [
+            "nama_kecamatan",
+            "kode_kecamatan",
+            "nama_kabupaten_kota",
+            "kode_kabupaten_kota",
+        ]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             errors.append(f"Missing required columns: {missing_columns}")
-    
+
         # Check for empty/null values in critical fields
-        for col in ["nama_kecamatan", "kode_kecamatan", "nama_kabupaten_kota", "kode_kabupaten_kota"]:
+        for col in [
+            "nama_kecamatan",
+            "kode_kecamatan",
+            "nama_kabupaten_kota",
+            "kode_kabupaten_kota",
+        ]:
             if col in df.columns:
                 null_count = df.filter(df[col].is_null() | (df[col] == "")).height
                 if null_count > 0:
                     errors.append(f"Found {null_count} null/empty values in {col}")
-    
+
         # Validate kecamatan codes (should be 6 digits)
         if "kode_kecamatan" in df.columns:
             invalid_codes = []
             for row in df.iter_rows(named=True):
                 code = str(row.get("kode_kecamatan", ""))
                 if code and (len(code) != 6 or not code.isdigit()):
-                    invalid_codes.append(f"{row.get('nama_kecamatan', 'Unknown')}: {code}")
+                    invalid_codes.append(
+                        f"{row.get('nama_kecamatan', 'Unknown')}: {code}"
+                    )
             if invalid_codes:
-                errors.append(f"Invalid kecamatan codes: {invalid_codes[:3]}")  # Show first 3
-    
+                errors.append(
+                    f"Invalid kecamatan codes: {invalid_codes[:3]}"
+                )  # Show first 3
+
         # Validate kabupaten/kota codes (should be 4 digits)
         if "kode_kabupaten_kota" in df.columns:
             invalid_codes = []
             for row in df.iter_rows(named=True):
                 code = str(row.get("kode_kabupaten_kota", ""))
                 if code and (len(code) != 4 or not code.isdigit()):
-                    invalid_codes.append(f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}")
+                    invalid_codes.append(
+                        f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}"
+                    )
             if invalid_codes:
-                errors.append(f"Invalid kabupaten/kota codes: {invalid_codes[:3]}")  # Show first 3
-    
+                errors.append(
+                    f"Invalid kabupaten/kota codes: {invalid_codes[:3]}"
+                )  # Show first 3
+
         # Check for duplicate kecamatan names within same kabupaten/kota
         if all(col in df.columns for col in ["nama_kecamatan", "nama_kabupaten_kota"]):
             grouped_duplicates = {}
             for row in df.iter_rows(named=True):
-                key = (row.get("nama_kabupaten_kota", ""), row.get("nama_kecamatan", ""))
+                key = (
+                    row.get("nama_kabupaten_kota", ""),
+                    row.get("nama_kecamatan", ""),
+                )
                 if key in grouped_duplicates:
                     grouped_duplicates[key] += 1
                 else:
                     grouped_duplicates[key] = 1
-    
-            duplicates = [f"{kab_kota}.{kec} ({count})" for (kab_kota, kec), count in grouped_duplicates.items() if count > 1]
+
+            duplicates = [
+                f"{kab_kota}.{kec} ({count})"
+                for (kab_kota, kec), count in grouped_duplicates.items()
+                if count > 1
+            ]
             if duplicates:
-                errors.append(f"Duplicate kecamatan names within kabupaten/kota: {duplicates[:3]}")
-    
+                errors.append(
+                    f"Duplicate kecamatan names within kabupaten/kota: {duplicates[:3]}"
+                )
+
         return errors
 
     # Check required columns
@@ -459,19 +509,31 @@ def _validate_kabupaten_kota_data(df, province_name: str) -> List[str]:
         for row in df.iter_rows(named=True):
             code = str(row.get("kode_kabupaten_kota", ""))
             if code and (len(code) != 4 or not code.isdigit()):
-                invalid_codes.append(f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}")
+                invalid_codes.append(
+                    f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}"
+                )
         if invalid_codes:
-            errors.append(f"Invalid kabupaten/kota codes: {invalid_codes[:3]}")  # Show first 3
+            errors.append(
+                f"Invalid kabupaten/kota codes: {invalid_codes[:3]}"
+            )  # Show first 3
 
     # Check for duplicate names or codes
     if "nama_kabupaten_kota" in df.columns:
-        names = [row["nama_kabupaten_kota"] for row in df.iter_rows(named=True) if row.get("nama_kabupaten_kota")]
+        names = [
+            row["nama_kabupaten_kota"]
+            for row in df.iter_rows(named=True)
+            if row.get("nama_kabupaten_kota")
+        ]
         if len(names) != len(set(names)):
             duplicates = [name for name in names if names.count(name) > 1]
             errors.append(f"Duplicate kabupaten/kota names: {list(set(duplicates))}")
 
     if "kode_kabupaten_kota" in df.columns:
-        codes = [str(row["kode_kabupaten_kota"]) for row in df.iter_rows(named=True) if row.get("kode_kabupaten_kota")]
+        codes = [
+            str(row["kode_kabupaten_kota"])
+            for row in df.iter_rows(named=True)
+            if row.get("kode_kabupaten_kota")
+        ]
         if len(codes) != len(set(codes)):
             duplicates = [code for code in codes if codes.count(code) > 1]
             errors.append(f"Duplicate kabupaten/kota codes: {list(set(duplicates))}")
@@ -488,13 +550,23 @@ def _validate_kecamatan_data(df, province_name: str) -> List[str]:
         return errors
 
     # Check required columns
-    required_columns = ["nama_kecamatan", "kode_kecamatan", "nama_kabupaten_kota", "kode_kabupaten_kota"]
+    required_columns = [
+        "nama_kecamatan",
+        "kode_kecamatan",
+        "nama_kabupaten_kota",
+        "kode_kabupaten_kota",
+    ]
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         errors.append(f"Missing required columns: {missing_columns}")
 
     # Check for empty/null values in critical fields
-    for col in ["nama_kecamatan", "kode_kecamatan", "nama_kabupaten_kota", "kode_kabupaten_kota"]:
+    for col in [
+        "nama_kecamatan",
+        "kode_kecamatan",
+        "nama_kabupaten_kota",
+        "kode_kabupaten_kota",
+    ]:
         if col in df.columns:
             null_count = df.filter(df[col].is_null() | (df[col] == "")).height
             if null_count > 0:
@@ -508,7 +580,9 @@ def _validate_kecamatan_data(df, province_name: str) -> List[str]:
             if code and (len(code) != 6 or not code.isdigit()):
                 invalid_codes.append(f"{row.get('nama_kecamatan', 'Unknown')}: {code}")
         if invalid_codes:
-            errors.append(f"Invalid kecamatan codes: {invalid_codes[:3]}")  # Show first 3
+            errors.append(
+                f"Invalid kecamatan codes: {invalid_codes[:3]}"
+            )  # Show first 3
 
     # Validate kabupaten/kota codes (should be 4 digits)
     if "kode_kabupaten_kota" in df.columns:
@@ -516,9 +590,13 @@ def _validate_kecamatan_data(df, province_name: str) -> List[str]:
         for row in df.iter_rows(named=True):
             code = str(row.get("kode_kabupaten_kota", ""))
             if code and (len(code) != 4 or not code.isdigit()):
-                invalid_codes.append(f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}")
+                invalid_codes.append(
+                    f"{row.get('nama_kabupaten_kota', 'Unknown')}: {code}"
+                )
         if invalid_codes:
-            errors.append(f"Invalid kabupaten/kota codes: {invalid_codes[:3]}")  # Show first 3
+            errors.append(
+                f"Invalid kabupaten/kota codes: {invalid_codes[:3]}"
+            )  # Show first 3
 
     # Check hierarchical relationships: kecamatan code should start with kabupaten/kota code
     if all(col in df.columns for col in ["kode_kecamatan", "kode_kabupaten_kota"]):
@@ -527,7 +605,9 @@ def _validate_kecamatan_data(df, province_name: str) -> List[str]:
             kec_code = str(row.get("kode_kecamatan", ""))
             kab_code = str(row.get("kode_kabupaten_kota", ""))
             if kec_code and kab_code and not kec_code.startswith(kab_code):
-                invalid_hierarchy.append(f"{row.get('nama_kecamatan', 'Unknown')}: {kec_code} does not start with {kab_code}")
+                invalid_hierarchy.append(
+                    f"{row.get('nama_kecamatan', 'Unknown')}: {kec_code} does not start with {kab_code}"
+                )
         if invalid_hierarchy:
             errors.append(f"Hierarchical relationship errors: {invalid_hierarchy[:3]}")
 
@@ -541,15 +621,23 @@ def _validate_kecamatan_data(df, province_name: str) -> List[str]:
             else:
                 grouped_duplicates[key] = 1
 
-        duplicates = [f"{kab_kota}.{kec} ({count})" for (kab_kota, kec), count in grouped_duplicates.items() if count > 1]
+        duplicates = [
+            f"{kab_kota}.{kec} ({count})"
+            for (kab_kota, kec), count in grouped_duplicates.items()
+            if count > 1
+        ]
         if duplicates:
-            errors.append(f"Duplicate kecamatan names within kabupaten/kota: {duplicates[:3]}")
+            errors.append(
+                f"Duplicate kecamatan names within kabupaten/kota: {duplicates[:3]}"
+            )
 
     return errors
 
 
 # Specific extraction functions
-def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[Dict, list[str]]:
+def _extract_single_province_kabupaten_kota(
+    file_path: str, row: dict
+) -> tuple[Dict, list[str]]:
     """Extract data for a single province (kabupaten/kota tables)."""
     from extractor.pdf_table_extractor import PDFTableExtractor
 
@@ -596,9 +684,7 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         folder_name_base = sanitize_folder_file_name(province_name)
         filename_base = sanitize_folder_file_name(index_name)
         path_base = os.path.join(folder_name_base, filename_base)
-        json_debug_base = os.path.join(
-            "debug", folder_name_base, filename_base
-        )
+        json_debug_base = os.path.join("debug", folder_name_base, filename_base)
 
         # CSV (tabular data)
         csv_path = get_csv_output_path(f"{path_base}.csv", ensure_dir=True)
@@ -619,7 +705,9 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         result["files"].append(json_path)
 
         # Validate extracted data
-        validation_errors = _validate_kabupaten_kota_data(kabupaten_kota_index, province_name)
+        validation_errors = _validate_kabupaten_kota_data(
+            kabupaten_kota_index, province_name
+        )
 
         # Debug JSON (metadata + sample data)
         debug_data = {
@@ -653,7 +741,9 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
 
 
 # Public API functions
-def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict, list[str]]:
+def _extract_single_province_kecamatan(
+    file_path: str, row: dict
+) -> tuple[Dict, list[str]]:
     """Extract district data for a single province."""
     from extractor.pdf_table_extractor import PDFTableExtractor
 
@@ -683,8 +773,10 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
 
     try:
         table_extractor = PDFTableExtractor(file_path)
-        kecamatan_index, unmatched_names, unmapped_bsni = table_extractor.kecamatan_index(
-            start_page=index_start, end_page=index_end, show_progress=False
+        kecamatan_index, unmatched_names, unmapped_bsni = (
+            table_extractor.kecamatan_index(
+                start_page=index_start, end_page=index_end, show_progress=False
+            )
         )
 
         extraction_time = time.time() - start_time
@@ -702,9 +794,7 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
         folder_name_base = sanitize_folder_file_name(province_name)
         filename_base = sanitize_folder_file_name(index_name)
         path_base = os.path.join(folder_name_base, filename_base)
-        json_debug_base = os.path.join(
-            "debug", folder_name_base, filename_base
-        )
+        json_debug_base = os.path.join("debug", folder_name_base, filename_base)
 
         # CSV (tabular data)
         csv_path = get_csv_output_path(f"{path_base}.csv", ensure_dir=True)
@@ -748,17 +838,23 @@ def _extract_single_province_kecamatan(file_path: str, row: dict) -> tuple[Dict,
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
         log_error(e, "kecamatan_extraction", "error")
-        log_messages.append(f"ERROR: Failed to extract kecamatan for {province_name}: {e}")
+        log_messages.append(
+            f"ERROR: Failed to extract kecamatan for {province_name}: {e}"
+        )
     except Exception as e:
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
         log_error(e, "kecamatan_extraction", "error")
-        log_messages.append(f"ERROR: Failed to extract kecamatan for {province_name}: {e}")
+        log_messages.append(
+            f"ERROR: Failed to extract kecamatan for {province_name}: {e}"
+        )
 
     return result, log_messages
 
 
-def _extract_single_province_kabupaten_kota_detail(file_path: str, row: dict) -> tuple[Dict, list[str]]:
+def _extract_single_province_kabupaten_kota_detail(
+    file_path: str, row: dict
+) -> tuple[Dict, list[str]]:
     """Extract detail data for a single kabupaten/kota."""
     from extractor.pdf_table_extractor import PDFTableExtractor
 
@@ -806,9 +902,7 @@ def _extract_single_province_kabupaten_kota_detail(file_path: str, row: dict) ->
         folder_name_base = sanitize_folder_file_name(province_name)
         filename_base = sanitize_folder_file_name(detail_name)
         path_base = os.path.join(folder_name_base, filename_base)
-        json_debug_base = os.path.join(
-            "debug", folder_name_base, filename_base
-        )
+        json_debug_base = os.path.join("debug", folder_name_base, filename_base)
 
         # CSV (tabular data)
         csv_path = get_csv_output_path(f"{path_base}.csv", ensure_dir=True)

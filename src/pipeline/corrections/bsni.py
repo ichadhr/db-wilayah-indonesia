@@ -1,6 +1,6 @@
-import os
 import csv
 import logging
+import os
 from typing import Dict, Optional
 
 import polars as pl
@@ -15,10 +15,14 @@ class BSNICorrection:
     """
     Loads and applies corrections from correction_bsni.csv.
     """
-    
+
     _instance = None
-    _corrections: Dict[str, Dict[str, str]] = {} # fix_source -> {source_value -> corrected_value}
-    _metadata: Dict[str, Dict[str, dict]] = {} # fix_source -> {source_value -> full_row_dict}
+    _corrections: Dict[
+        str, Dict[str, str]
+    ] = {}  # fix_source -> {source_value -> corrected_value}
+    _metadata: Dict[
+        str, Dict[str, dict]
+    ] = {}  # fix_source -> {source_value -> full_row_dict}
 
     def __new__(cls):
         if cls._instance is None:
@@ -29,38 +33,40 @@ class BSNICorrection:
     @error_handler(operation_name="load_corrections", log_errors=True, re_raise=False)
     def _load_corrections(self):
         """Load corrections from CSV file."""
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv")
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv"
+        )
 
         if not os.path.exists(csv_path):
             log_error(
                 FileOperationError(
                     f"Correction bsni file not found: {csv_path}",
                     file_path=csv_path,
-                    operation="file_exists_check"
+                    operation="file_exists_check",
                 ),
                 "load_corrections",
-                "warning"
+                "warning",
             )
             return
 
         try:
-            with open(csv_path, 'r', encoding='utf-8') as f:
+            with open(csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
 
                 # Validate CSV headers
-                expected_headers = {'fix_source', 'source_value', 'corrected_value'}
+                expected_headers = {"fix_source", "source_value", "corrected_value"}
                 if not expected_headers.issubset(set(reader.fieldnames or [])):
                     raise ValidationError(
                         f"Invalid CSV format. Expected headers: {expected_headers}, got: {reader.fieldnames}",
                         field="csv_headers",
-                        value=str(reader.fieldnames)
+                        value=str(reader.fieldnames),
                     )
 
                 count = 0
                 for row in reader:
-                    fix_source = row.get('fix_source', '').strip()
-                    source_value = row.get('source_value', '').strip()
-                    corrected_value = row.get('corrected_value', '').strip()
+                    fix_source = row.get("fix_source", "").strip()
+                    source_value = row.get("source_value", "").strip()
+                    corrected_value = row.get("corrected_value", "").strip()
 
                     if not fix_source or not source_value:
                         continue
@@ -72,7 +78,9 @@ class BSNICorrection:
                         self._corrections[fix_source] = {}
                         self._metadata[fix_source] = {}
 
-                    self._corrections[fix_source][normalized_source_value] = corrected_value
+                    self._corrections[fix_source][normalized_source_value] = (
+                        corrected_value
+                    )
                     # Store metadata with both original and normalized keys for scope checking
                     self._metadata[fix_source][normalized_source_value] = row
                     # Also keep original for backward compatibility if needed
@@ -84,13 +92,13 @@ class BSNICorrection:
             raise FileOperationError(
                 f"Failed to read correction bsni file: {str(e)}",
                 file_path=csv_path,
-                operation="file_read"
+                operation="file_read",
             ) from e
         except csv.Error as e:
             raise ValidationError(
                 f"Invalid CSV format in correction bsni file: {str(e)}",
                 field="csv_content",
-                value=csv_path
+                value=csv_path,
             ) from e
 
     def get_correction(self, value: str, fix_source: str) -> Optional[str]:
@@ -143,7 +151,9 @@ class BSNICorrection:
         Returns:
             Polars DataFrame containing all corrections, or None if import fails
         """
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv")
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "datas", "correction_bsni.csv"
+        )
         try:
             if os.path.exists(csv_path):
                 return pl.read_csv(csv_path)
@@ -153,10 +163,10 @@ class BSNICorrection:
                 FileOperationError(
                     f"Failed to read correction bsni file for DataFrame: {str(e)}",
                     file_path=csv_path,
-                    operation="csv_read"
+                    operation="csv_read",
                 ),
                 "get_corrections_df",
-                "error"
+                "error",
             )
             return None
         except pl.exceptions.PolarsError as e:
@@ -164,9 +174,9 @@ class BSNICorrection:
                 ValidationError(
                     f"Failed to parse corrections bsni CSV: {str(e)}",
                     field="csv_parsing",
-                    value=csv_path
+                    value=csv_path,
                 ),
                 "get_corrections_df",
-                "error"
+                "error",
             )
             return None

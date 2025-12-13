@@ -3,22 +3,23 @@ Parquet File Merger Module
 Utility for merging province-specific parquet files into consolidated datasets
 """
 
-import os
-import polars as pl
-from pathlib import Path
-from typing import Optional, Dict, Callable
 import logging
+import os
+from pathlib import Path
+from typing import Callable, Dict, Optional
 
+import polars as pl
+
+from utils.errors import FileOperationError, error_handler
 from utils.paths import get_parquet_output_path
-from utils.errors import error_handler, FileOperationError
-from utils.text_utils import normalize_kelurahan_desa, normalize_kecamatan
+from utils.text_utils import normalize_kecamatan, normalize_kelurahan_desa
 
 logger = logging.getLogger(__name__)
 
 
 class ParquetFileMerger:
     """Utility for merging parquet files from different provinces."""
-    
+
     @staticmethod
     @error_handler(operation_name="merge_parquet_files", log_errors=True)
     def merge_province_parquet_files(
@@ -26,7 +27,7 @@ class ParquetFileMerger:
         filename_pattern: str,
         output_filename: str,
         filters: Optional[list[str]] = None,
-        clean_columns: Optional[Dict[str, Callable[[str], str]]] = None
+        clean_columns: Optional[Dict[str, Callable[[str], str]]] = None,
     ) -> str:
         """
         Generic method to merge parquet files from province subdirectories.
@@ -48,43 +49,41 @@ class ParquetFileMerger:
         all_dataframes = []
         files_processed = 0
         files_failed = 0
-        
+
         logger.info(f"Starting parquet merge: {filename_pattern}")
         logger.info(f"Searching in: {base_path}")
-        
+
         # Find all province directories
         for province_dir in sorted(base_path.iterdir()):
             if not province_dir.is_dir():
                 continue
-                
+
             province_name = province_dir.name
-            
+
             # Look for matching parquet files
             for parquet_file in province_dir.glob(filename_pattern):
                 try:
                     logger.debug(f"Reading: {parquet_file}")
                     df = pl.read_parquet(parquet_file)
-                    
+
                     all_dataframes.append(df)
                     files_processed += 1
                     logger.debug(f"[OK] Processed {province_name}: {len(df)} records")
-                    
+
                 except Exception as e:
                     files_failed += 1
                     logger.warning(f"[FAILED] Failed to read {parquet_file}: {e}")
                     continue
-        
+
         if not all_dataframes:
             error_msg = f"No parquet files found matching pattern: {filename_pattern}"
             logger.error(error_msg)
             raise FileOperationError(
-                error_msg,
-                file_path=str(base_path),
-                operation="merge"
+                error_msg, file_path=str(base_path), operation="merge"
             )
-        
+
         logger.info(f"Files processed: {files_processed}, failed: {files_failed}")
-        
+
         # Merge all DataFrames
         logger.info("Concatenating dataframes...")
         merged_df = pl.concat(all_dataframes, how="vertical")
@@ -94,32 +93,38 @@ class ParquetFileMerger:
             for col in filters:
                 if col in merged_df.columns:
                     logger.info(f"Filtering out rows with empty {col}...")
-                    merged_df = merged_df.filter(pl.col(col) != '')
+                    merged_df = merged_df.filter(pl.col(col) != "")
 
         # Clean leading numbers if specified
         if clean_columns:
-            merged_df = ParquetFileMerger.clean_leading_numbers(merged_df, clean_columns)
+            merged_df = ParquetFileMerger.clean_leading_numbers(
+                merged_df, clean_columns
+            )
 
         total_records = len(merged_df)
         logger.info(f"Merged {files_processed} files into {total_records} records")
-        
+
         # Delete existing file if present
-        output_path = get_parquet_output_path(f"{output_filename}.parquet", ensure_dir=True)
+        output_path = get_parquet_output_path(
+            f"{output_filename}.parquet", ensure_dir=True
+        )
         if os.path.exists(output_path):
             logger.info(f"Removing existing file: {output_path}")
             os.remove(output_path)
-        
+
         # Save merged file
         logger.info(f"Writing merged file: {output_path}")
         merged_df.write_parquet(output_path)
-        
+
         logger.info(f"[OK] Successfully created merged file: {output_path}")
         logger.info(f"  Total records: {total_records}")
-        
+
         return output_path
 
     @staticmethod
-    def clean_leading_numbers(df: pl.DataFrame, clean_columns: Dict[str, Callable[[str], str]]) -> pl.DataFrame:
+    def clean_leading_numbers(
+        df: pl.DataFrame, clean_columns: Dict[str, Callable[[str], str]]
+    ) -> pl.DataFrame:
         """
         Clean leading numbers from specified columns using provided functions.
 
@@ -134,79 +139,84 @@ class ParquetFileMerger:
             if col in df.columns:
                 logger.info(f"Cleaning leading numbers from column: {col}")
                 df = df.with_columns(
-                    pl.col(col).map_elements(lambda x: clean_func(str(x)) if x else "", return_dtype=pl.Utf8)
+                    pl.col(col).map_elements(
+                        lambda x: clean_func(str(x)) if x else "", return_dtype=pl.Utf8
+                    )
                 )
         return df
-    
+
     @staticmethod
     def merge_kabupaten_kota_index(parquet_dir: Optional[str] = None) -> str:
         """
         Convenience method for merging kabupaten/kota index files.
-        
+
         Args:
             parquet_dir: Base parquet directory (default: auto-detected from paths.py)
-            
+
         Returns:
             Path to merged file: indonesia_kabupaten_kota_index.parquet
         """
         from utils.paths import get_output_subdir
-        
+
         if parquet_dir is None:
             parquet_dir = get_output_subdir("parquet")
-        
+
         logger.info("=== Merging Kabupaten/Kota Index Files ===")
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kabupaten_kota_index.parquet",
-            output_filename="indonesia_kabupaten_kota_index"
+            output_filename="indonesia_kabupaten_kota_index",
         )
-    
+
     @staticmethod
     def merge_kecamatan_index(parquet_dir: Optional[str] = None) -> str:
         """
         Convenience method for merging kecamatan index files.
-        
+
         Args:
             parquet_dir: Base parquet directory (default: auto-detected from paths.py)
-            
+
         Returns:
             Path to merged file: indonesia_kecamatan_index.parquet
         """
         from utils.paths import get_output_subdir
-        
+
         if parquet_dir is None:
             parquet_dir = get_output_subdir("parquet")
-        
+
         logger.info("=== Merging Kecamatan Index Files ===")
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kecamatan_index.parquet",
             output_filename="indonesia_kecamatan_index",
             filters=["kode_kecamatan"],
-            clean_columns={"kecamatan": normalize_kecamatan}
+            clean_columns={"kecamatan": normalize_kecamatan},
         )
-    
+
     @staticmethod
     def merge_kabupaten_kota_detail(parquet_dir: Optional[str] = None) -> str:
         """
         Convenience method for merging kabupaten/kota detail files.
-        
+
         Args:
             parquet_dir: Base parquet directory (default: auto-detected from paths.py)
-            
+
         Returns:
             Path to merged file: indonesia_kabupaten_kota_detail.parquet
         """
         from utils.paths import get_output_subdir
-        
+
         if parquet_dir is None:
             parquet_dir = get_output_subdir("parquet")
-        
+
         logger.info("=== Merging Kabupaten/Kota Detail Files ===")
         return ParquetFileMerger.merge_province_parquet_files(
             parquet_dir=parquet_dir,
             filename_pattern="*_kabupaten_kota_detail.parquet",
             output_filename="indonesia_kabupaten_kota_detail",
             filters=["kode_kelurahan"],
-            clean_columns={"kelurahan": normalize_kelurahan_desa, "desa": normalize_kelurahan_desa}
+            clean_columns={
+                "kelurahan": normalize_kelurahan_desa,
+                "desa": normalize_kelurahan_desa,
+            },
         )

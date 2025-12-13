@@ -1,19 +1,31 @@
-import json
 import gc
+import json
 import os
 
+from config.settings import settings
 from extractor.kode_wilayah_ocr import KodeWilayahOCR
 from extractor.pdf_structure_extractor import PDFStructureExtractor
 from extractor.pdf_table_extractor import PDFTableExtractor
-from utils.errors import FileOperationError, TableExtractionError, ValidationError, OCRError, error_handler, log_error
+from utils.errors import (
+    FileOperationError,
+    OCRError,
+    TableExtractionError,
+    ValidationError,
+    error_handler,
+    log_error,
+)
 from utils.paths import (
     get_csv_output_path,
     get_json_output_path,
     get_parquet_output_path,
-    sanitize_folder_file_name
+    sanitize_folder_file_name,
 )
-from utils.structure_utils import provinsi_index_struct, kabupaten_kota_index_struct, kecamatan_index_struct
-from config.settings import settings
+from utils.structure_utils import (
+    kabupaten_kota_index_struct,
+    kecamatan_index_struct,
+    provinsi_index_struct,
+)
+
 from .batch_processor import BatchProcessor, _extract_single_province_kabupaten_kota
 
 
@@ -45,7 +57,9 @@ def extract_pdf_structure(doc_path: str):
         print(f"Error during get PDF structure: {e}")
 
 
-@error_handler(operation_name="extract_table_provinsi_index", log_errors=True, re_raise=False)
+@error_handler(
+    operation_name="extract_table_provinsi_index", log_errors=True, re_raise=False
+)
 def extract_table_provinsi_index(file_path: str, structure_path: str):
     try:
         # Get province index page ranges using utility
@@ -54,7 +68,7 @@ def extract_table_provinsi_index(file_path: str, structure_path: str):
             raise ValidationError(
                 "No province index found in structure",
                 field="structure_data",
-                value=structure_path
+                value=structure_path,
             )
 
         prov_row = prov_df.row(0)
@@ -115,7 +129,9 @@ def extract_table_provinsi_index(file_path: str, structure_path: str):
         print(f"Error during Province table extraction: {e}")
 
 
-@error_handler(operation_name="extract_table_kabupaten_kota_index", log_errors=True, re_raise=False)
+@error_handler(
+    operation_name="extract_table_kabupaten_kota_index", log_errors=True, re_raise=False
+)
 def extract_table_kabupaten_kota_index(file_path: str, structure_path: str):
     province_name = "Unknown"  # Initialize for error reporting
     try:
@@ -125,7 +141,7 @@ def extract_table_kabupaten_kota_index(file_path: str, structure_path: str):
             raise ValidationError(
                 "No regency index found in structure",
                 field="structure_data",
-                value=structure_path
+                value=structure_path,
             )
 
         regency_row = regency_df.row(0)
@@ -193,7 +209,9 @@ def extract_table_kabupaten_kota_index(file_path: str, structure_path: str):
         )
 
 
-@error_handler(operation_name="extract_table_kecamatan_index", log_errors=True, re_raise=False)
+@error_handler(
+    operation_name="extract_table_kecamatan_index", log_errors=True, re_raise=False
+)
 def extract_table_kecamatan_index(file_path: str, structure_path: str):
     province_name = "Unknown"  # Initialize for error reporting
     try:
@@ -203,7 +221,7 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
             raise ValidationError(
                 "No district index found in structure",
                 field="structure_data",
-                value=structure_path
+                value=structure_path,
             )
 
         print(district_df)
@@ -275,7 +293,14 @@ def extract_table_kecamatan_index(file_path: str, structure_path: str):
         )
 
 
-def extract_table_kabupaten_kota_index_batch(file_path: str, structure_path: str, province_filter=None, batch_size: int = 38, max_workers: int = 7, log_filename=None):
+def extract_table_kabupaten_kota_index_batch(
+    file_path: str,
+    structure_path: str,
+    province_filter=None,
+    batch_size: int = 38,
+    max_workers: int = 7,
+    log_filename=None,
+):
     """
     Process kabupaten/kota index tables for multiple provinces in batches.
 
@@ -294,7 +319,7 @@ def extract_table_kabupaten_kota_index_batch(file_path: str, structure_path: str
         raise ValidationError(
             "No regency index found in structure",
             field="structure_data",
-            value=structure_path
+            value=structure_path,
         )
 
     total_provinces = len(district_city_df)
@@ -329,13 +354,19 @@ def extract_table_kabupaten_kota_index_batch(file_path: str, structure_path: str
         # Process batch with optional parallelization and progress tracking
         if max_workers > 1:
             results = processor.process_batch(
-                file_path, batch_df, _extract_single_province_kabupaten_kota,
-                item_name="province", log_filename=log_filename
+                file_path,
+                batch_df,
+                _extract_single_province_kabupaten_kota,
+                item_name="province",
+                log_filename=log_filename,
             )
         else:
             results = BatchProcessor.process_sequential(
-                file_path, batch_df, _extract_single_province_kabupaten_kota,
-                item_name="province", log_filename=log_filename
+                file_path,
+                batch_df,
+                _extract_single_province_kabupaten_kota,
+                item_name="province",
+                log_filename=log_filename,
             )
 
         all_results.extend(results)
@@ -365,5 +396,3 @@ def extract_code_wilayah():
     except Exception as e:
         log_error(e, "extract_code_wilayah", "error")
         print(f"Error during OCR extraction: {e}")
-
-

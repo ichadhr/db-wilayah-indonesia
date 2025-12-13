@@ -61,7 +61,7 @@ def ensure_output_dirs() -> None:
             raise FileOperationError(
                 f"Failed to create output subdirectory: {full_path}",
                 file_path=full_path,
-                operation="create_directory"
+                operation="create_directory",
             ) from e
 
     # Create debug subdirectory under json
@@ -72,7 +72,7 @@ def ensure_output_dirs() -> None:
         raise FileOperationError(
             f"Failed to create debug subdirectory: {debug_dir}",
             file_path=debug_dir,
-            operation="create_directory"
+            operation="create_directory",
         ) from e
 
 
@@ -98,7 +98,7 @@ def ensure_file_directory(filepath: str) -> None:
             raise FileOperationError(
                 f"Failed to create directory for file: {directory}",
                 file_path=directory,
-                operation="create_directory"
+                operation="create_directory",
             ) from e
 
 

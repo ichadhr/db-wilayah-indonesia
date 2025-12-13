@@ -1,16 +1,23 @@
 import json
 import os
 import time
-from typing import Optional, Any
+from typing import Any, Optional
 
-from ..batch_processor import BatchProcessor, _validate_kabupaten_kota_data
 from extractor.pdf_table_extractor import PDFTableExtractor
 from utils.errors import BatchProcessingError, error_handler, log_error
-from utils.paths import get_json_output_path, get_parquet_output_path, sanitize_folder_file_name
+from utils.paths import (
+    get_json_output_path,
+    get_parquet_output_path,
+    sanitize_folder_file_name,
+)
 from utils.structure_utils import kabupaten_kota_index_struct
 
+from ..batch_processor import BatchProcessor, _validate_kabupaten_kota_data
 
-def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[dict, list[str]]:
+
+def _extract_single_province_kabupaten_kota(
+    file_path: str, row: dict
+) -> tuple[dict, list[str]]:
     """Extract data for a single province (kabupaten/kota tables)."""
 
     province_name = row["province_name"]
@@ -51,9 +58,7 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         folder_name_base = sanitize_folder_file_name(province_name)
         filename_base = sanitize_folder_file_name(index_name)
         path_base = os.path.join(folder_name_base, filename_base)
-        json_debug_base = os.path.join(
-            "debug", folder_name_base, filename_base
-        )
+        json_debug_base = os.path.join("debug", folder_name_base, filename_base)
 
         # Parquet (efficient storage)
         parquet_path = get_parquet_output_path(f"{path_base}.parquet", ensure_dir=True)
@@ -62,7 +67,9 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         result["files"].append(parquet_path)
 
         # Validate extracted data
-        validation_errors = _validate_kabupaten_kota_data(kabupaten_kota_index, province_name)
+        validation_errors = _validate_kabupaten_kota_data(
+            kabupaten_kota_index, province_name
+        )
 
         # Debug JSON (metadata + sample data)
         debug_data = {
@@ -85,7 +92,10 @@ def _extract_single_province_kabupaten_kota(file_path: str, row: dict) -> tuple[
         extraction_time = time.time() - start_time
         result.update({"time": extraction_time, "error": str(e)})
         error_msg = f"Failed to extract kabupaten/kota for {province_name}"
-        log_error(BatchProcessingError(error_msg, province_name=province_name), "kabupaten_kota_extraction")
+        log_error(
+            BatchProcessingError(error_msg, province_name=province_name),
+            "kabupaten_kota_extraction",
+        )
         log_messages.append(f"ERROR: {error_msg}: {e}")
 
     return result, log_messages
@@ -96,18 +106,26 @@ def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:
     """Execute kabupaten/kota index batch processing."""
     if logger is None:
         import logging
+
         logger = logging.getLogger(__name__)
 
     pdf_path = config.main_pdf
     structure_path = get_json_output_path("structure_pdf.json")
 
     if not os.path.exists(structure_path):
-        raise BatchProcessingError("Structure file not found, run structure extraction first", file_path=structure_path)
+        raise BatchProcessingError(
+            "Structure file not found, run structure extraction first",
+            file_path=structure_path,
+        )
 
     # Get all regency index sections
-    district_city_df = kabupaten_kota_index_struct(structure_path, config.province_filter)
+    district_city_df = kabupaten_kota_index_struct(
+        structure_path, config.province_filter
+    )
     if len(district_city_df) == 0:
-        raise BatchProcessingError("No regency index found in structure", file_path=structure_path)
+        raise BatchProcessingError(
+            "No regency index found in structure", file_path=structure_path
+        )
 
     total_provinces = len(district_city_df)
     logger.info(f"Processing {total_provinces} provinces for kabupaten/kota index")
@@ -120,18 +138,26 @@ def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:
         batch_df = district_city_df.slice(batch_start, config.batch_size)
         batch_end = min(batch_start + config.batch_size, total_provinces)
 
-        logger.info(f"Processing batch {batch_start // config.batch_size + 1}: provinces {batch_start + 1}-{batch_end}")
+        logger.info(
+            f"Processing batch {batch_start // config.batch_size + 1}: provinces {batch_start + 1}-{batch_end}"
+        )
 
         # Process batch
         if config.max_workers > 1:
             results = processor.process_batch(
-                pdf_path, batch_df, _extract_single_province_kabupaten_kota,
-                item_name="province", log_filename=None
+                pdf_path,
+                batch_df,
+                _extract_single_province_kabupaten_kota,
+                item_name="province",
+                log_filename=None,
             )
         else:
             results = BatchProcessor.process_sequential(
-                pdf_path, batch_df, _extract_single_province_kabupaten_kota,
-                item_name="province", log_filename=None
+                pdf_path,
+                batch_df,
+                _extract_single_province_kabupaten_kota,
+                item_name="province",
+                log_filename=None,
             )
 
         all_results.extend(results)
@@ -140,20 +166,28 @@ def execute_kabupaten_kota_batch(config, logger=None) -> Optional[Any]:
     successful = [r for r in all_results if r["success"]]
     failed = [r for r in all_results if not r["success"]]
 
-    logger.info(f"Batch processing completed: {len(successful)} successful, {len(failed)} failed")
+    logger.info(
+        f"Batch processing completed: {len(successful)} successful, {len(failed)} failed"
+    )
 
     if failed:
         for result in failed:
-            logger.error(f"Failed province {result['province_name']}: {result['error']}")
+            logger.error(
+                f"Failed province {result['province_name']}: {result['error']}"
+            )
 
-    return type('Result', (), {
-        'success': len(failed) == 0,
-        'records_processed': sum(r.get('records', 0) for r in successful),
-        'files_generated': [f for r in successful for f in r.get('files', [])],
-        'metadata': {
-            'total_provinces': total_provinces,
-            'successful_provinces': len(successful),
-            'failed_provinces': len(failed)
+    return type(
+        "Result",
+        (),
+        {
+            "success": len(failed) == 0,
+            "records_processed": sum(r.get("records", 0) for r in successful),
+            "files_generated": [f for r in successful for f in r.get("files", [])],
+            "metadata": {
+                "total_provinces": total_provinces,
+                "successful_provinces": len(successful),
+                "failed_provinces": len(failed),
+            },
+            "error_message": f"{len(failed)} provinces failed" if failed else None,
         },
-        'error_message': f"{len(failed)} provinces failed" if failed else None
-    })()
+    )()

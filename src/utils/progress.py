@@ -20,7 +20,9 @@ class ProgressManager:
         self.active_progresses = {}
 
     @contextmanager
-    @error_handler(operation_name="pdf_processing_progress", log_errors=True, re_raise=False)
+    @error_handler(
+        operation_name="pdf_processing_progress", log_errors=True, re_raise=False
+    )
     def pdf_processing_progress(
         self,
         total_pages: int,
@@ -48,7 +50,9 @@ class ProgressManager:
             progress_bar.close()
 
     @contextmanager
-    @error_handler(operation_name="table_extraction_progress", log_errors=True, re_raise=False)
+    @error_handler(
+        operation_name="table_extraction_progress", log_errors=True, re_raise=False
+    )
     def table_extraction_progress(
         self,
         total_pages: int,
@@ -64,7 +68,7 @@ class ProgressManager:
         )
 
         # Set initial postfix
-        progress_bar.set_postfix_str(f"0 Pages, 0 Records")
+        progress_bar.set_postfix_str("0 Pages, 0 Records")
 
         progress_context = TableExtractionProgressContext(progress_bar, total_pages)
         try:
@@ -95,7 +99,9 @@ class ProgressManager:
             progress_bar.close()
 
     @contextmanager
-    @error_handler(operation_name="batch_processing_progress", log_errors=True, re_raise=False)
+    @error_handler(
+        operation_name="batch_processing_progress", log_errors=True, re_raise=False
+    )
     def batch_processing_progress(
         self,
         total_items: int,
