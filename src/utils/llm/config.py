@@ -36,7 +36,7 @@ class LLMConfig(BaseSettings):
     )
 
     llm_temperature: float = Field(
-        default=0.1,
+        default=0.0,
         ge=0.0,
         le=1.0,
         description="Sampling temperature (0=deterministic, 1=creative)",
